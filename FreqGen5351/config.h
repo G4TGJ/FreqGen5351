@@ -22,7 +22,8 @@ typedef uint8_t bool;
 
 // Processor definitions
 // CPU clock speed
-#define F_CPU 8000000UL
+// This should be 1MHz unless you have programmed the CKDIV8 fuse
+#define F_CPU 1000000UL
 
 // Define this to enable the morse keyer
 //#define ENABLE_MORSE_KEYER
@@ -92,5 +93,11 @@ typedef uint8_t bool;
 
 #define DEFAULT_RX_FREQ 3560000UL
 #define DEFAULT_TX_FREQ 10116000UL
+
+// Dimensions of the LCD screen
+#define LCD_WIDTH 16
+#define LCD_HEIGHT 2
+
+#define LCD_I2C_ADDRESS 0x27
 
 #endif /* CONFIG_H_ */

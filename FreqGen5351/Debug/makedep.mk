@@ -4,6 +4,10 @@
 
 ..\..\TARL\eeprom.c
 
+..\..\TARL\lcd.c
+
+..\..\TARL\lcd_i2c.c
+
 ..\..\TARL\millis.c
 
 ..\..\TARL\morse.c

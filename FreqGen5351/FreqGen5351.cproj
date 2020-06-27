@@ -112,6 +112,18 @@
       <SubType>compile</SubType>
       <Link>i2c.h</Link>
     </Compile>
+    <Compile Include="..\..\TARL\lcd.c">
+      <SubType>compile</SubType>
+      <Link>lcd.c</Link>
+    </Compile>
+    <Compile Include="..\..\TARL\lcd.h">
+      <SubType>compile</SubType>
+      <Link>lcd.h</Link>
+    </Compile>
+    <Compile Include="..\..\TARL\lcd_i2c.c">
+      <SubType>compile</SubType>
+      <Link>lcd_i2c.c</Link>
+    </Compile>
     <Compile Include="..\..\TARL\millis.c">
       <SubType>compile</SubType>
       <Link>millis.c</Link>

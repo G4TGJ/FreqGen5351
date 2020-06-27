@@ -7,12 +7,14 @@
 
 #include <avr/io.h>
 #include <avr/sleep.h>
+#include <stdio.h>
 #include "config.h"
 #include "io.h"
 #include "millis.h"
 #include "morse.h"
 #include "nvram.h"
 #include "osc.h"
+#include "lcd.h"
 
 #ifdef ENABLE_MORSE_KEYER
 
@@ -62,9 +64,23 @@ int main(void)
     oscSetTXFrequency( nvramReadTXFreq() );
     oscTXClockEnable( true );
 
+    lcd_init();
+
+    // Set up the LCD's number of columns and rows:
+    lcd_begin(LCD_WIDTH, LCD_HEIGHT, LCD_5x8DOTS);
+
+    lcd_setCursor( 0, 0 );
+    lcd_print( "Si5351A Freq Gen" );
+
     // Main loop
     while (1) 
     {
+        static uint32_t count;
+        char buf[100];
+        sprintf( buf, "%lu", ++count);
+        lcd_setCursor( 0, 1 );
+        lcd_print( buf );
+
         // Flash an LED
         ioWriteMorseOutputHigh();
         delay(1000);
