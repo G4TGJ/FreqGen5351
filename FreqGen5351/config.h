@@ -39,6 +39,7 @@ typedef uint8_t bool;
 #define DEFAULT_KEYER_MODE 0
 
 // Morse paddle inputs
+#if 0
 #define MORSE_PADDLE_DOT_PORT_REG   PORTB
 #define MORSE_PADDLE_DOT_PIN_REG    PINB
 #define MORSE_PADDLE_DOT_PIN        PB1
@@ -61,13 +62,27 @@ typedef uint8_t bool;
 #define UNUSED_1_PIN       PB2
 #define UNUSED_2_PORT_REG  PORTB
 #define UNUSED_2_PIN       PB4
+#endif
 
 // I/O definitions
+
+#define ROTARY_ENCODER_A_PORT_REG   PORTB
+#define ROTARY_ENCODER_A_PIN_REG    PINB
+#define ROTARY_ENCODER_A_PIN        PB4
+#define ROTARY_ENCODER_B_PORT_REG   PORTB
+#define ROTARY_ENCODER_B_PIN_REG    PINB
+#define ROTARY_ENCODER_B_PIN        PB3
+#define ROTARY_ENCODER_SW_PORT_REG  PORTB
+#define ROTARY_ENCODER_SW_PIN_REG   PINB
+#define ROTARY_ENCODER_SW_PIN       PB1
+
 // Output pins
+#if 0
 #define MORSE_OUTPUT_PORT_REG   PORTB
 #define MORSE_OUTPUT_PIN_REG    PINB
 #define MORSE_OUTPUT_DDR_REG    DDRB
 #define MORSE_OUTPUT_PIN        PB4
+#endif
 
 // Bits for the power down mode
 #define POWER_DOWN_MODE ((1<<SM1)|(0<<SM0))
@@ -94,10 +109,20 @@ typedef uint8_t bool;
 #define DEFAULT_RX_FREQ 3560000UL
 #define DEFAULT_TX_FREQ 10116000UL
 
+#define MIN_FREQUENCY      1000UL
+#define MAX_FREQUENCY 199999999UL
+
 // Dimensions of the LCD screen
 #define LCD_WIDTH 16
 #define LCD_HEIGHT 2
 
 #define LCD_I2C_ADDRESS 0x27
+
+#define DEBOUNCE_TIME   100
+
+// Time for a key press to be a long press (ms)
+#define LONG_PRESS_TIME 250
+
+
 
 #endif /* CONFIG_H_ */

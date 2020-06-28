@@ -100,6 +100,14 @@
     </ToolchainSettings>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\TARL\display.c">
+      <SubType>compile</SubType>
+      <Link>display.c</Link>
+    </Compile>
+    <Compile Include="..\..\TARL\display.h">
+      <SubType>compile</SubType>
+      <Link>display.h</Link>
+    </Compile>
     <Compile Include="..\..\TARL\eeprom.c">
       <SubType>compile</SubType>
       <Link>eeprom.c</Link>
@@ -143,6 +151,14 @@
     <Compile Include="..\..\TARL\osc.h">
       <SubType>compile</SubType>
       <Link>osc.h</Link>
+    </Compile>
+    <Compile Include="..\..\TARL\rotary.c">
+      <SubType>compile</SubType>
+      <Link>rotary.c</Link>
+    </Compile>
+    <Compile Include="..\..\TARL\rotary.h">
+      <SubType>compile</SubType>
+      <Link>rotary.h</Link>
     </Compile>
     <Compile Include="..\..\TARL\si5351a.c">
       <SubType>compile</SubType>

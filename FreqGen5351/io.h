@@ -11,6 +11,9 @@
 // Configure all IO ports
 void ioConfigure();
 
+// Read the rotary switch
+void ioReadRotary( bool *pbA, bool *pbB, bool *pbSw );
+
 // Read the morse dot and dash paddles
 bool ioReadDotPaddle();
 bool ioReadDashPaddle();

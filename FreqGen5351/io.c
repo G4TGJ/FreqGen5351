@@ -22,6 +22,7 @@
 // easy to change the hardware e.g. we have the option to
 // connect several inputs to a single ADC pin
 
+#if 0
 // Functions to read morse paddle inputs
 bool ioReadDotPaddle()
 {
@@ -50,7 +51,17 @@ void ioEnableMorseSpeedSwitchPullUp()
 {
     MORSE_SPEED_SWITCH_PORT_REG |= (1<<MORSE_SPEED_SWITCH_PIN);
 }
+#endif
 
+// Read rotary control inputs
+void ioReadRotary( bool *pbA, bool *pbB, bool *pbSw )
+{
+    *pbA =  !(ROTARY_ENCODER_A_PIN_REG & (1<<ROTARY_ENCODER_A_PIN));
+    *pbB = !(ROTARY_ENCODER_B_PIN_REG & (1<<ROTARY_ENCODER_B_PIN));
+    *pbSw = !(ROTARY_ENCODER_SW_PIN_REG & (1<<ROTARY_ENCODER_SW_PIN));
+}
+
+#if 0
 void ioWriteMorseOutputHigh()
 {
     MORSE_OUTPUT_PORT_REG |= (1<<MORSE_OUTPUT_PIN);
@@ -61,6 +72,7 @@ void ioWriteMorseOutputLow()
 {
     MORSE_OUTPUT_PORT_REG &= ~(1<<MORSE_OUTPUT_PIN);
 }
+#endif
 
 // Interrupt handler for pin change
 // Doesn't need to do anything but is needed to wake
@@ -73,8 +85,13 @@ ISR (PCINT0_vect)
 void ioConfigure()
 {
 	// Initialise morse output
-    MORSE_OUTPUT_DDR_REG |= (1<<MORSE_OUTPUT_PIN);
+//    MORSE_OUTPUT_DDR_REG |= (1<<MORSE_OUTPUT_PIN);
+
+    ROTARY_ENCODER_A_PORT_REG |= (1<<ROTARY_ENCODER_A_PIN);
+    ROTARY_ENCODER_B_PORT_REG |= (1<<ROTARY_ENCODER_B_PIN);
+    ROTARY_ENCODER_SW_PORT_REG |= (1<<ROTARY_ENCODER_SW_PIN);
     
+#if 0
     // Paddle dot and dash pins as inputs with pull-ups
     MORSE_PADDLE_DOT_PORT_REG |= (1<<MORSE_PADDLE_DOT_PIN);
     MORSE_PADDLE_DASH_PIN_REG |= (1<<MORSE_PADDLE_DASH_PIN);
@@ -90,11 +107,12 @@ void ioConfigure()
     // Set up pin change interrupts for the paddle
     PCMSK = (1<<MORSE_PADDLE_DOT_PCINT)|(1<<MORSE_PADDLE_DASH_PCINT);
     GIMSK = (1<<PCIE);
+#endif
 
     /* Insert nop for synchronization*/
     _NOP();
 
     // Ensure the morse output is low
-    ioWriteMorseOutputLow();
+//    ioWriteMorseOutputLow();
 }
 

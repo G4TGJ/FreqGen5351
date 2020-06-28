@@ -8,6 +8,7 @@
 #include <avr/io.h>
 #include <avr/sleep.h>
 #include <stdio.h>
+#include <string.h>
 #include "config.h"
 #include "io.h"
 #include "millis.h"
@@ -15,6 +16,28 @@
 #include "nvram.h"
 #include "osc.h"
 #include "lcd.h"
+#include "rotary.h"
+#include "display.h"
+
+// Number of frequencies under control
+// Currently assume one per screen line
+#define NUM_FREQUENCIES 2
+
+// Maximum digit one click can change the frequency
+// e.g. 6 is 1000000 i.e. 10^6
+#define MAX_FREQ_CHANGE_DIGIT 8
+
+// The oscillator frequencies
+static uint32_t oscFreq[NUM_FREQUENCIES];
+
+// Frequency currently being updated
+static uint8_t currentFreq = 0;
+
+// Frequency digit currently being changed
+static uint8_t freqChangeDigit = 0;
+
+// Amount by which frequency is changing
+static uint32_t freqChangeAmount = 1;
 
 #ifdef ENABLE_MORSE_KEYER
 
@@ -37,8 +60,63 @@ void displayMorse( char *text )
 }
 #endif
 
+void oscSetFrequency( uint8_t osc, uint32_t freq )
+{
+    if( osc == 0 )
+    {
+        oscSetRXFrequency( freq, false );
+    }
+    else
+    {
+        oscSetTXFrequency( freq );
+    }
+}
+
+void oscClockEnable( uint8_t osc, bool bEnable )
+{
+    if( osc == 0 )
+    {
+        oscRXClockEnable( bEnable );
+    }
+    else
+    {
+        oscTXClockEnable( bEnable );
+    }
+}
+
+
+void updateDisplay()
+{
+    uint8_t i;
+    char buf[30];
+
+    for( i = 0 ; i < NUM_FREQUENCIES ; i++ )
+    {
+        sprintf( buf, "%9lu", oscFreq[i] );
+        displayText( i, buf, true );
+    }
+}
+
+void updateCursor()
+{
+    displayCursor( 8-freqChangeDigit, currentFreq, cursorUnderline );
+}
+
+void incFreqChangeDigit()
+{
+    freqChangeDigit++;
+    freqChangeAmount *= 10;
+    if( freqChangeDigit > MAX_FREQ_CHANGE_DIGIT )
+    {
+        freqChangeDigit = 0;
+        freqChangeAmount = 1;
+    }
+}
+
 int main(void)
 {
+    uint8_t i;
+
     // Set up the timer
     setup_millis();
 
@@ -58,11 +136,16 @@ int main(void)
     // frequencies from the NVRAM
     oscInit();
 
-    oscSetRXFrequency( nvramReadRXFreq(), false );
-    oscRXClockEnable( true );
+    // Read the frequencies from NVRAM
+    oscFreq[0] = nvramReadRXFreq();
+    oscFreq[1] = nvramReadTXFreq();
 
-    oscSetTXFrequency( nvramReadTXFreq() );
-    oscTXClockEnable( true );
+    // Start with the outputs enabled
+    for( i = 0 ; i < NUM_FREQUENCIES ; i++ )
+    {
+        oscSetFrequency( i, oscFreq[i] );
+        oscClockEnable( i, true );
+    }
 
     lcd_init();
 
@@ -72,20 +155,52 @@ int main(void)
     lcd_setCursor( 0, 0 );
     lcd_print( "Si5351A Freq Gen" );
 
+    updateDisplay();
+    updateCursor();
+
     // Main loop
     while (1) 
     {
-        static uint32_t count;
-        char buf[100];
-        sprintf( buf, "%lu", ++count);
-        lcd_setCursor( 0, 1 );
-        lcd_print( buf );
+        uint32_t currentOscFreq, newOscFreq;
+        currentOscFreq = newOscFreq = oscFreq[currentFreq];
 
-        // Flash an LED
-        ioWriteMorseOutputHigh();
-        delay(1000);
-        ioWriteMorseOutputLow();
-        delay(1000);
+        bool bShortPress;
+        bool bLongPress;
+        bool bCW;
+        bool bCCW;
+
+        readRotary(&bCW, &bCCW, &bShortPress, &bLongPress);
+        if( bCW )
+        {
+            newOscFreq += freqChangeAmount;
+        }
+        else if( bCCW )
+        {
+            newOscFreq -= freqChangeAmount;
+        }
+        else if( bShortPress )
+        {
+            incFreqChangeDigit();
+            updateCursor();
+        }
+        else if( bLongPress )
+        {
+            // Long press changes the other frequency
+            currentFreq = (currentFreq+1) % NUM_FREQUENCIES;
+            updateCursor();
+        }
+
+        if( newOscFreq != currentOscFreq )
+        {
+            // Only accept the new frequency if it is in range
+            if( (newOscFreq >= MIN_FREQUENCY) && (newOscFreq <= MAX_FREQUENCY) )
+            {
+                oscFreq[currentFreq] = newOscFreq;
+                oscSetFrequency( currentFreq, newOscFreq );
+
+                updateDisplay();
+            }
+        }
 
 #ifdef ENABLE_MORSE_KEYER
         // Read the speed switch and use this to set the morse speed
