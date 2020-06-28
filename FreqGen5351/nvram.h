@@ -14,12 +14,7 @@
 
 void nvramInit();
 
-uint8_t nvramReadSlowWpm();
-uint8_t nvramReadFastWpm();
-enum eMorseKeyerMode nvramReadMorseKeyerMode();
 uint32_t nvramReadXtalFreq();
-uint32_t nvramReadRXFreq();
-uint32_t nvramReadTXFreq();
-
+uint32_t nvramReadFreq( uint8_t clock );
 
 #endif //NVRAM_H

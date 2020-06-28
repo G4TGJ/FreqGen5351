@@ -20,8 +20,7 @@
 #include "display.h"
 
 // Number of frequencies under control
-// Currently assume one per screen line
-#define NUM_FREQUENCIES 2
+#define NUM_FREQUENCIES 3
 
 // Maximum digit one click can change the frequency
 // e.g. 6 is 1000000 i.e. 10^6
@@ -30,8 +29,8 @@
 // The oscillator frequencies
 static uint32_t oscFreq[NUM_FREQUENCIES];
 
-// Frequency currently being updated
-static uint8_t currentFreq = 0;
+// Oscillator currently being updated
+static uint8_t currentOsc = 0;
 
 // Frequency digit currently being changed
 static uint8_t freqChangeDigit = 0;
@@ -60,18 +59,6 @@ void displayMorse( char *text )
 }
 #endif
 
-void oscSetFrequency( uint8_t osc, uint32_t freq )
-{
-    if( osc == 0 )
-    {
-        oscSetRXFrequency( freq, false );
-    }
-    else
-    {
-        oscSetTXFrequency( freq );
-    }
-}
-
 void oscClockEnable( uint8_t osc, bool bEnable )
 {
     if( osc == 0 )
@@ -84,24 +71,57 @@ void oscClockEnable( uint8_t osc, bool bEnable )
     }
 }
 
-
+// Display the frequencies on screen
+// Summarise all 3 on the top line
+// Show the one currently being changed on the bottom
 void updateDisplay()
 {
     uint8_t i;
     char buf[30];
 
+    // Start with an empty buffer
+    buf[0] = '\0';
+
+    // Display all the frequencies on the top line
     for( i = 0 ; i < NUM_FREQUENCIES ; i++ )
     {
-        sprintf( buf, "%9lu", oscFreq[i] );
-        displayText( i, buf, true );
+        // We only have 4 characters for each frequency so need to
+        // format them accordingly
+        if( oscFreq[i] >= 10000000 )
+        {
+            sprintf( buf, "%s%3luM ", buf, oscFreq[i]/1000000 );
+        }
+        else if( oscFreq[i] >= 1000000 )
+        {
+            sprintf( buf, "%s%2luM%lu ", buf, oscFreq[i]/1000000, oscFreq[i]%1000000/100000 );
+        }
+        else if( oscFreq[i] >= 10000 )
+        {
+            sprintf( buf, "%s%2luK ", buf, oscFreq[i]/1000 );
+        }
+        else if( oscFreq[i] >= 1000 )
+        {
+            sprintf( buf, "%s%2luK%lu ", buf, oscFreq[i]/1000, oscFreq[i]%1000/100 );
+        }
+        else
+        {
+            sprintf( buf, "%s%4lu ", buf, oscFreq[i] );
+        }
     }
+    displayText( 0, buf, true );
+
+    // Display the current oscillator in full on the second line
+    sprintf( buf, "CLK%d: %9lu", currentOsc, oscFreq[currentOsc] );
+    displayText( 1, buf, true );
 }
 
+// Display the cursor on the frequency digit currently being change
 void updateCursor()
 {
-    displayCursor( 8-freqChangeDigit, currentFreq, cursorUnderline );
+    displayCursor( 14-freqChangeDigit, 1, cursorUnderline );
 }
 
+// When the button is pressed we move to the next digit to change
 void incFreqChangeDigit()
 {
     freqChangeDigit++;
@@ -126,35 +146,24 @@ int main(void)
     // Initialise the NVRAM
     nvramInit();
 
-#ifdef ENABLE_MORSE_KEYER
-    // Configure the morse logic and set the keyer mode
-    morseConfigure();
-    morseSetKeyerMode(nvramReadMorseKeyerMode());
-#endif
-
     // Initialise the oscillator and then set the RX and TX
     // frequencies from the NVRAM
     oscInit();
 
-    // Read the frequencies from NVRAM
-    oscFreq[0] = nvramReadRXFreq();
-    oscFreq[1] = nvramReadTXFreq();
-
-    // Start with the outputs enabled
+    // Read the frequencies from NVRAM and enable the outputs
     for( i = 0 ; i < NUM_FREQUENCIES ; i++ )
     {
+        oscFreq[i] = nvramReadFreq( i );
         oscSetFrequency( i, oscFreq[i] );
         oscClockEnable( i, true );
     }
 
-    lcd_init();
+    // Set up the display with a brief welcome message
+    displayConfigure();
+    displayText( 0, "Si5351A Freq Gen", true );
+    delay(1000);
 
-    // Set up the LCD's number of columns and rows:
-    lcd_begin(LCD_WIDTH, LCD_HEIGHT, LCD_5x8DOTS);
-
-    lcd_setCursor( 0, 0 );
-    lcd_print( "Si5351A Freq Gen" );
-
+    // Now show the oscillator frequencies
     updateDisplay();
     updateCursor();
 
@@ -162,7 +171,7 @@ int main(void)
     while (1) 
     {
         uint32_t currentOscFreq, newOscFreq;
-        currentOscFreq = newOscFreq = oscFreq[currentFreq];
+        currentOscFreq = newOscFreq = oscFreq[currentOsc];
 
         bool bShortPress;
         bool bLongPress;
@@ -180,13 +189,20 @@ int main(void)
         }
         else if( bShortPress )
         {
+            // Short press moves to the next digit
             incFreqChangeDigit();
             updateCursor();
         }
         else if( bLongPress )
         {
-            // Long press changes the other frequency
-            currentFreq = (currentFreq+1) % NUM_FREQUENCIES;
+            // Long press moves to the next oscillator
+            currentOsc = (currentOsc+1) % NUM_FREQUENCIES;
+
+            // Start entry back at 1Hz
+            freqChangeDigit = 0;
+            freqChangeAmount = 1;
+
+            updateDisplay();
             updateCursor();
         }
 
@@ -195,43 +211,12 @@ int main(void)
             // Only accept the new frequency if it is in range
             if( (newOscFreq >= MIN_FREQUENCY) && (newOscFreq <= MAX_FREQUENCY) )
             {
-                oscFreq[currentFreq] = newOscFreq;
-                oscSetFrequency( currentFreq, newOscFreq );
+                oscFreq[currentOsc] = newOscFreq;
+                oscSetFrequency( currentOsc, newOscFreq );
 
                 updateDisplay();
             }
         }
-
-#ifdef ENABLE_MORSE_KEYER
-        // Read the speed switch and use this to set the morse speed
-        //morseSetWpm( ioReadMorseSpeedSwitch() ? nvramReadFastWpm() : nvramReadSlowWpm() );
-
-        // Scan the morse paddles and process
-        // If nothing is happening we want to go into power down mode
-        // to save energy - this way we don't need a power switch
-        // So we will count how often we are idle
-        static uint16_t count;
-        if( morseScanPaddles() )
-        {
-            // Active so reset the count
-            count = 0;
-        }
-        else
-        {
-            // Idle so count
-            count++;
-            if( count >= 1000 )
-            {
-                // We have been idle enough so go into power down
-                // While in power down we will disable the pull up resistor
-                // on the speed switch to minimise power consumption.
-                ioDisableMorseSpeedSwitchPullUp();
-                set_sleep_mode(POWER_DOWN_MODE);
-                sleep_mode();
-                ioEnableMorseSpeedSwitchPullUp();
-            }
-        }
-#endif
     }
 }
 
