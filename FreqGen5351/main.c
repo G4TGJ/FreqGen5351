@@ -71,54 +71,143 @@ void oscClockEnable( uint8_t osc, bool bEnable )
     }
 }
 
+// Convert a number into a string
+// This is for the display and will be right justified
+// This is intended for a frequency with a maximum of
+// 200MHz.
+//
+// If bShort is true then only output 4 characters
+// otherwise convert the whole number
+//
+// len is the length of the buffer and we won't write beyond it
+//
+// If there are only 4 characters available then
+// can only handle 3 digits plus an M or K
+// (or 4 digits for the lowest frequencies)
+static void convertNumber( char *buf, uint8_t len, uint32_t number, bool bShort )
+{
+    uint32_t divider;
+    uint8_t pos;
+    
+    // Set to true once we have started converting digits
+    bool bStarted = false;
+
+    // Start by writing out leading spaces
+    for( pos = 0 ; pos < (len-9) ; pos++ )
+    {
+        buf[pos] = ' ';
+    }
+    
+    // Maximum number is 200 000 000
+    // We want to convert digits starting at the left
+    for( divider = 100000000 ; (divider > 0) && (pos < len) ; divider /= 10 )
+    {
+        // Get the current digit
+        uint8_t digit = number / divider;
+        
+        // If we have started converting or this is a digit
+        if( bStarted || digit )
+        {
+            // Convert this digit
+            buf[pos] = digit + '0';
+            pos++;
+            bStarted = true;
+        }
+        else if( !bShort )
+        {
+            // Insert a leading space if doing a full conversion
+            // This right justifies the number
+            buf[pos] = ' ';
+            pos++;
+        }
+        
+        // If we only have space for SHORT_WIDTH digits then stop after 4
+        if( bShort && pos == SHORT_WIDTH )
+        {
+            // Need to decide whether to use M or K etc as a decimal point
+            // If so, either insert it at the end, or in the middle
+            // in which case we need to shift the digits to make space
+            //
+            // 123456789 becomes 123M
+            //  12345678 becomes 12M3
+            //   1234567 becomes 1M23
+            //    123456 becomes 123K
+            //     12345 becomes 12K3
+            //      1234 becomes 1234
+            //
+            if( divider == 100000 )
+            {
+                buf[3] = 'M';
+            }
+            else if( divider == 10000 )
+            {
+                buf[3] = buf[2];
+                buf[2] = 'M';
+            }
+            else if( divider == 1000 )
+            {
+                buf[3] = buf[2];
+                buf[2] = buf[1];
+                buf[1] = 'M';
+            }
+            else if( divider == 100 )
+            {
+                buf[3] = 'K';
+            }
+            else if( divider == 10 )
+            {
+                buf[3] = buf[2];
+                buf[2] = 'K';
+            }
+            
+            // Stop converting
+            break;
+        }
+        
+        // Now process the remainder
+        number %= divider;
+    }
+    
+    // If we haven't converted any digits then it must be zero
+    if( !bStarted && (pos == len) )
+    {
+        buf[len - 1] = '0';
+    }
+}
+
+
 // Display the frequencies on screen
 // Summarise all 3 on the top line
 // Show the one currently being changed on the bottom
 void updateDisplay()
 {
     uint8_t i;
-    char buf[30];
+    char buf[LCD_WIDTH+1];
 
-    // Start with an empty buffer
-    buf[0] = '\0';
-
-    // Display all the frequencies on the top line
+    // Display all the frequencies on the top line in shortened form
     for( i = 0 ; i < NUM_FREQUENCIES ; i++ )
     {
-        // We only have 4 characters for each frequency so need to
-        // format them accordingly
-        if( oscFreq[i] >= 10000000 )
-        {
-            sprintf( buf, "%s%3luM ", buf, oscFreq[i]/1000000 );
-        }
-        else if( oscFreq[i] >= 1000000 )
-        {
-            sprintf( buf, "%s%2luM%lu ", buf, oscFreq[i]/1000000, oscFreq[i]%1000000/100000 );
-        }
-        else if( oscFreq[i] >= 10000 )
-        {
-            sprintf( buf, "%s%2luK ", buf, oscFreq[i]/1000 );
-        }
-        else if( oscFreq[i] >= 1000 )
-        {
-            sprintf( buf, "%s%2luK%lu ", buf, oscFreq[i]/1000, oscFreq[i]%1000/100 );
-        }
-        else
-        {
-            sprintf( buf, "%s%4lu ", buf, oscFreq[i] );
-        }
+        convertNumber( &buf[i*(SHORT_WIDTH+1)], SHORT_WIDTH, oscFreq[i], true );
+        buf[i*(SHORT_WIDTH+1)+SHORT_WIDTH] = ' ';
     }
+    buf[LCD_WIDTH-1] = '\0';
     displayText( 0, buf, true );
 
     // Display the current oscillator in full on the second line
-    sprintf( buf, "CLK%d: %9lu", currentOsc, oscFreq[currentOsc] );
+    convertNumber( buf, LCD_WIDTH, oscFreq[currentOsc], false );
+    buf[0] = 'C';
+    buf[1] = 'L';
+    buf[2] = 'K';
+    buf[3] = currentOsc + '0';
+    buf[4] = ':';
+    buf[LCD_WIDTH] = '\0';
     displayText( 1, buf, true );
 }
 
 // Display the cursor on the frequency digit currently being change
 void updateCursor()
 {
-    displayCursor( 14-freqChangeDigit, 1, cursorUnderline );
+    displayCursor( LCD_WIDTH-1-freqChangeDigit, 1, cursorUnderline );
 }
 
 // When the button is pressed we move to the next digit to change

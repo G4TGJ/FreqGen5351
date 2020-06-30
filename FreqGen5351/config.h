@@ -56,12 +56,17 @@ typedef uint8_t bool;
 #define DEFAULT_FREQ_2 199999999UL
 
 // Min and max frequencies we can generate
-#define MIN_FREQUENCY    500000UL
+#define MIN_FREQUENCY    500UL
 #define MAX_FREQUENCY 199999999UL
 
 // Dimensions of the LCD screen
 #define LCD_WIDTH 16
 #define LCD_HEIGHT 2
+
+// Space for each frequency on the top line
+// Must be able to get all 3 within the LCD_WIDTH
+// (plus spaces in between)
+#define SHORT_WIDTH 4
 
 // Address of the LCD display
 #define LCD_I2C_ADDRESS 0x27
