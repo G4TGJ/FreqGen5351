@@ -24,7 +24,12 @@
 
 // Maximum digit one click can change the frequency
 // e.g. 6 is 1000000 i.e. 10^6
-#define MAX_FREQ_CHANGE_DIGIT 8
+// The highest digit is actually used to change quadrature phase
+// or turn the clock on or off
+#define MAX_FREQ_CHANGE_DIGIT 9
+
+// The digit used to change quadrature settings
+#define QUADRATURE_CHANGE_DIGIT MAX_FREQ_CHANGE_DIGIT
 
 // The oscillator frequencies
 static uint32_t oscFreq[NUM_FREQUENCIES];
@@ -38,26 +43,11 @@ static uint8_t freqChangeDigit = 0;
 // Amount by which frequency is changing
 static uint32_t freqChangeAmount = 1;
 
-#ifdef ENABLE_MORSE_KEYER
-
-// Function called by the morse logic when the key is going down (or up)
-void keyDown( bool bDown )
-{
-    if( bDown )
-    {
-        ioWriteMorseOutputHigh();
-    }
-    else
-    {
-        ioWriteMorseOutputLow();
-    }
-}
-
-// Called by the morse logic to display the current character - not used here
-void displayMorse( char *text )
-{
-}
-#endif
+// Normally this is zero but if set to +1 or -1 it
+// sets quadrature mode.
+// This sets clock 1 to the same frequency as clock0
+// with a 90 degree phase shift
+static int8_t quadrature = -1;
 
 void oscClockEnable( uint8_t osc, bool bEnable )
 {
@@ -187,7 +177,18 @@ void updateDisplay()
     // Display all the frequencies on the top line in shortened form
     for( i = 0 ; i < NUM_FREQUENCIES ; i++ )
     {
-        convertNumber( &buf[i*(SHORT_WIDTH+1)], SHORT_WIDTH, oscFreq[i], true );
+        // If clock 1 is in quadrature then display +90 or -90 instead of the frequency
+        if( (i == 1) && (quadrature != 0) )
+        {
+            buf[i*(SHORT_WIDTH+1) + 0] = (quadrature > 0 ? '+' : '-');
+            buf[i*(SHORT_WIDTH+1) + 1] = '9';
+            buf[i*(SHORT_WIDTH+1) + 2] = '0';
+            buf[i*(SHORT_WIDTH+1) + 3] = ' ';
+        }
+        else
+        {
+            convertNumber( &buf[i*(SHORT_WIDTH+1)], SHORT_WIDTH, oscFreq[i], true );
+        }
         buf[i*(SHORT_WIDTH+1)+SHORT_WIDTH] = ' ';
     }
     buf[LCD_WIDTH-1] = '\0';
@@ -201,6 +202,19 @@ void updateDisplay()
     buf[3] = currentOsc + '0';
     buf[4] = ':';
     buf[LCD_WIDTH] = '\0';
+
+    // For clock 1 if in quadrature mode then display + or -
+    if( (quadrature != 0) && (currentOsc == 1) )
+    {
+        if( quadrature > 0 )
+        {
+            buf[6] = '+';
+        }
+        else
+        {
+            buf[6] = '-';
+        }
+    }
     displayText( 1, buf, true );
 }
 
@@ -243,7 +257,7 @@ int main(void)
     for( i = 0 ; i < NUM_FREQUENCIES ; i++ )
     {
         oscFreq[i] = nvramReadFreq( i );
-        oscSetFrequency( i, oscFreq[i] );
+        oscSetFrequency( i, oscFreq[i], quadrature );
         oscClockEnable( i, true );
     }
 
@@ -261,6 +275,7 @@ int main(void)
     {
         uint32_t currentOscFreq, newOscFreq;
         currentOscFreq = newOscFreq = oscFreq[currentOsc];
+        int8_t newQuadrature = quadrature;
 
         bool bShortPress;
         bool bLongPress;
@@ -270,11 +285,39 @@ int main(void)
         readRotary(&bCW, &bCCW, &bShortPress, &bLongPress);
         if( bCW )
         {
-            newOscFreq += freqChangeAmount;
+            if( freqChangeDigit == QUADRATURE_CHANGE_DIGIT )
+            {
+                if( currentOsc == 1 )
+                {
+                    newQuadrature++;
+                    if( newQuadrature > 1 )
+                    {
+                        newQuadrature = -1;
+                    }
+                }
+            }
+            else
+            {
+                newOscFreq += freqChangeAmount;
+            }
         }
         else if( bCCW )
         {
-            newOscFreq -= freqChangeAmount;
+            if( freqChangeDigit == QUADRATURE_CHANGE_DIGIT )
+            {
+                if( currentOsc == 1 )
+                {
+                    newQuadrature--;
+                    if( newQuadrature < -1 )
+                    {
+                        newQuadrature = 1;
+                    }
+                }
+            }
+            else
+            {
+                newOscFreq -= freqChangeAmount;
+            }
         }
         else if( bShortPress )
         {
@@ -287,21 +330,32 @@ int main(void)
             // Long press moves to the next oscillator
             currentOsc = (currentOsc+1) % NUM_FREQUENCIES;
 
-            // Start entry back at 1Hz
-            freqChangeDigit = 0;
-            freqChangeAmount = 1;
+            // Start entry back at 1Hz unless now on clock 1 and
+            // in quadrature in which case go straight to the
+            // quadrature change digit
+            if( (currentOsc == 1) && (quadrature != 0) )
+            {
+                freqChangeDigit = QUADRATURE_CHANGE_DIGIT;
+            }
+            else
+            {
+                freqChangeDigit = 0;
+                freqChangeAmount = 1;
+            }
 
             updateDisplay();
             updateCursor();
         }
 
-        if( newOscFreq != currentOscFreq )
+        // Only set frequency or quadrature if it has changed
+        if( (newOscFreq != currentOscFreq) || (newQuadrature != quadrature) )
         {
             // Only accept the new frequency if it is in range
             if( (newOscFreq >= MIN_FREQUENCY) && (newOscFreq <= MAX_FREQUENCY) )
             {
                 oscFreq[currentOsc] = newOscFreq;
-                oscSetFrequency( currentOsc, newOscFreq );
+                quadrature = newQuadrature;
+                oscSetFrequency( currentOsc, newOscFreq, quadrature );
 
                 updateDisplay();
             }
