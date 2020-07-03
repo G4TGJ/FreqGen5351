@@ -30,11 +30,11 @@
 // The digit used to change control settings (quadrature and clock enable)
 #define CONTROL_CHARACTER 11
 
-// The oscillator frequencies
-static uint32_t oscFreq[NUM_CLOCKS];
+// The clock frequencies
+static uint32_t clockFreq[NUM_CLOCKS];
 
-// Oscillator currently being updated
-static uint8_t currentOsc = 0;
+// Clock currently being updated
+static uint8_t currentClock = 0;
 
 // Frequency digit currently being changed
 static uint8_t freqChangeDigit = 0;
@@ -158,7 +158,7 @@ static void convertNumber( char *buf, uint8_t len, uint32_t number, bool bShort 
 // Display the frequencies on screen
 // Summarise all 3 on the top line
 // Show the one currently being changed on the bottom
-void updateDisplay()
+static void updateDisplay()
 {
     uint8_t i;
     char buf[LCD_WIDTH+1];
@@ -185,7 +185,7 @@ void updateDisplay()
         }
         else
         {
-            convertNumber( &buf[i*(SHORT_WIDTH+1)], SHORT_WIDTH, oscFreq[i], true );
+            convertNumber( &buf[i*(SHORT_WIDTH+1)], SHORT_WIDTH, clockFreq[i], true );
         }
         buf[i*(SHORT_WIDTH+1)+SHORT_WIDTH] = ' ';
     }
@@ -193,21 +193,21 @@ void updateDisplay()
     buf[LCD_WIDTH-1] = '\0';
     displayText( 0, buf, true );
 
-    // Display the current oscillator on the second line
+    // Display the current clock frequency on the second line
     memset( buf, ' ', LCD_WIDTH );
     buf[0] = 'C';
     buf[1] = 'L';
     buf[2] = 'K';
-    buf[3] = currentOsc + '0';
+    buf[3] = currentClock + '0';
 
     // If the clock is off then display a dot
-    if( !bClockEnabled[currentOsc] )
+    if( !bClockEnabled[currentClock] )
     {
         buf[4] = '.';
     }
 
     // For clock 1 if in quadrature mode then display + or -
-    else if( (quadrature != 0) && (currentOsc == 1) )
+    else if( (quadrature != 0) && (currentClock == 1) )
     {
         if( quadrature > 0 )
         {
@@ -222,7 +222,7 @@ void updateDisplay()
     {
         // Otherwise it's a colon and the frequency
         buf[4] = ':';
-        convertNumber( &buf[7], LCD_WIDTH-7, oscFreq[currentOsc], false );
+        convertNumber( &buf[7], LCD_WIDTH-7, clockFreq[currentClock], false );
     }
     buf[LCD_WIDTH] = '\0';
 
@@ -230,9 +230,11 @@ void updateDisplay()
 }
 
 // Display the cursor on the frequency digit currently being changed
-void updateCursor()
+static void updateCursor()
 {
-    if( !bClockEnabled[currentOsc] )
+    // If the clock is off then go straight to the control character
+    // to make it easy to turn back on
+    if( !bClockEnabled[currentClock] )
     {
         freqChangeDigit = CONTROL_CHARACTER;
     }
@@ -240,7 +242,7 @@ void updateCursor()
 }
 
 // When the button is pressed we move to the next digit to change
-void incFreqChangeDigit()
+static void incFreqChangeDigit()
 {
     freqChangeDigit++;
     freqChangeAmount *= 10;
@@ -255,6 +257,157 @@ void incFreqChangeDigit()
     {
         freqChangeDigit = CONTROL_CHARACTER;
         freqChangeAmount = 0;
+    }
+}
+
+// Main loop
+static void loop()
+{
+    uint32_t currentOscFreq, newOscFreq;
+    bool bCurrentClockEnabled, bNewClockEnabled;
+
+    int8_t newQuadrature = quadrature;
+    currentOscFreq = newOscFreq = clockFreq[currentClock];
+    bCurrentClockEnabled = bNewClockEnabled = bClockEnabled[currentClock];
+
+    bool bShortPress;
+    bool bLongPress;
+    bool bCW;
+    bool bCCW;
+
+    // Read the rotart control and its switch
+    readRotary(&bCW, &bCCW, &bShortPress, &bLongPress);
+    if( bCW )
+    {
+        // The leftmost digit is the control digit which allows
+        // us to turn the clock on/off and select quadrature
+        // mode on clock 1
+        if( freqChangeDigit == CONTROL_CHARACTER )
+        {
+            // Clock 1 cycles off->on->-90->+90->off
+            if( currentClock == 1 )
+            {
+                if( !bCurrentClockEnabled )
+                {
+                    bNewClockEnabled = true;
+                    newQuadrature = 0;
+                }
+                else
+                {
+                    if( quadrature == 0 )
+                    {
+                        newQuadrature = -1;
+                    }
+                    else if( quadrature == -1 )
+                    {
+                        newQuadrature = +1;
+                    }
+                    else
+                    {
+                        bNewClockEnabled = false;
+                    }
+                }
+            }
+            else
+            {
+                // Clock 0 and 2 cycle on->off
+                bNewClockEnabled = !bCurrentClockEnabled;
+            }
+        }
+        else
+        {
+            newOscFreq += freqChangeAmount;
+        }
+    }
+    else if( bCCW )
+    {
+        if( freqChangeDigit == CONTROL_CHARACTER )
+        {
+            // Clock 1 cycles off->+90->-90->on->off
+            if( currentClock == 1 )
+            {
+                if( !bCurrentClockEnabled )
+                {
+                    bNewClockEnabled = true;
+                    newQuadrature = 1;
+                }
+                else
+                {
+                    if( quadrature == 1 )
+                    {
+                        newQuadrature = -1;
+                    }
+                    else if( quadrature == -1 )
+                    {
+                        newQuadrature = 0;
+                    }
+                    else
+                    {
+                        bNewClockEnabled = false;
+                    }
+                }
+            }
+            else
+            {
+                // Clock 0 and 2 cycle on->off
+                bNewClockEnabled = !bCurrentClockEnabled;
+            }
+        }
+        else
+        {
+            newOscFreq -= freqChangeAmount;
+        }
+    }
+    else if( bShortPress )
+    {
+        // Short press moves to the next digit
+        incFreqChangeDigit();
+        updateCursor();
+    }
+    if( bLongPress )
+    {
+        // Long press moves to the next clock
+        currentClock = (currentClock+1) % NUM_CLOCKS;
+
+        // Start entry back at 1Hz unless the clock is disabled
+        // or now on clock 1 and in quadrature
+        // in which case go straight to the control digit
+        if( !bClockEnabled[currentClock] || ((currentClock == 1) && (quadrature != 0)) )
+        {
+            freqChangeDigit = CONTROL_CHARACTER;
+        }
+        else
+        {
+            freqChangeDigit = 0;
+            freqChangeAmount = 1;
+        }
+
+        updateDisplay();
+        updateCursor();
+    }
+    else
+    {
+        // Enable or disable the clock if its state has changed
+        if( bNewClockEnabled != bCurrentClockEnabled )
+        {
+            oscClockEnable( currentClock, bNewClockEnabled );
+            bClockEnabled[currentClock] = bNewClockEnabled;
+            updateDisplay();
+        }
+
+        // Only set frequency or quadrature if it has changed
+        if( (newOscFreq != currentOscFreq) || (newQuadrature != quadrature) )
+        {
+            // Only accept the new frequency if it is in range
+            if( (newOscFreq >= MIN_FREQUENCY) && (newOscFreq <= MAX_FREQUENCY) )
+            {
+                clockFreq[currentClock] = newOscFreq;
+                quadrature = newQuadrature;
+                oscSetFrequency( currentClock, newOscFreq, quadrature );
+
+                updateDisplay();
+            }
+        }
     }
 }
 
@@ -276,23 +429,22 @@ int main(void)
     displayText( 0, "Si5351A Freq Gen", true );
     delay(1000);
 
-    // Initialise the oscillator and then set the RX and TX
-    // frequencies from the NVRAM
+    // Initialise the oscillator chip
     if( !oscInit() )
     {
         displayText( 0, "Fail to init", true );
         delay(1000);
     }
 
+    // Load the crystal frequency from NVRAM
+    oscSetXtalFrequency( nvramReadXtalFreq() );
+
     // Read the frequencies from NVRAM and enable the outputs
     for( i = 0 ; i < NUM_CLOCKS ; i++ )
     {
-        oscFreq[i] = nvramReadFreq( i );
+        clockFreq[i] = nvramReadFreq( i );
         bClockEnabled[i] = false;
-        oscSetFrequency( i, oscFreq[i], quadrature );
-    }
-    for( i = 0 ; i < NUM_CLOCKS ; i++ )
-    {
+        oscSetFrequency( i, clockFreq[i], quadrature );
         oscClockEnable( i, bClockEnabled[i] );
     }
 
@@ -303,151 +455,7 @@ int main(void)
     // Main loop
     while (1) 
     {
-        uint32_t currentOscFreq, newOscFreq;
-        bool bCurrentClockEnabled, bNewClockEnabled;
-
-        int8_t newQuadrature = quadrature;
-        currentOscFreq = newOscFreq = oscFreq[currentOsc];
-        bCurrentClockEnabled = bNewClockEnabled = bClockEnabled[currentOsc];
-
-        bool bShortPress;
-        bool bLongPress;
-        bool bCW;
-        bool bCCW;
-
-        readRotary(&bCW, &bCCW, &bShortPress, &bLongPress);
-        if( bCW )
-        {
-            // The top digit is the control digit which allows
-            // us to turn the clock on/off and select quadrature
-            // mode on clock 1
-            if( freqChangeDigit == CONTROL_CHARACTER )
-            {
-                // Clock 1 cycles off->on->-90->+90->off
-                if( currentOsc == 1 )
-                {
-                    if( !bCurrentClockEnabled )
-                    {
-                        bNewClockEnabled = true;
-                        newQuadrature = 0;
-                    }
-                    else
-                    {
-                        if( quadrature == 0 )
-                        {
-                            newQuadrature = -1;
-                        }
-                        else if( quadrature == -1 )
-                        {
-                            newQuadrature = +1;
-                        }
-                        else
-                        {
-                            bNewClockEnabled = false;
-                        }
-                    }
-                }
-                else
-                {
-                    // Clock 0 and 2 cycle on->off
-                    bNewClockEnabled = !bCurrentClockEnabled;
-                }
-            }
-            else
-            {
-                newOscFreq += freqChangeAmount;
-            }
-        }
-        else if( bCCW )
-        {
-            if( freqChangeDigit == CONTROL_CHARACTER )
-            {
-                // Clock 1 cycles off->+90->-90->on->off
-                if( currentOsc == 1 )
-                {
-                    if( !bCurrentClockEnabled )
-                    {
-                        bNewClockEnabled = true;
-                        newQuadrature = 1;
-                    }
-                    else
-                    {
-                        if( quadrature == 1 )
-                        {
-                            newQuadrature = -1;
-                        }
-                        else if( quadrature == -1 )
-                        {
-                            newQuadrature = 0;
-                        }
-                        else
-                        {
-                            bNewClockEnabled = false;
-                        }
-                    }
-                }
-                else
-                {
-                    // Clock 0 and 2 cycle on->off
-                    bNewClockEnabled = !bCurrentClockEnabled;
-                }
-            }
-            else
-            {
-                newOscFreq -= freqChangeAmount;
-            }
-        }
-        else if( bShortPress )
-        {
-            // Short press moves to the next digit
-            incFreqChangeDigit();
-            updateCursor();
-        }
-        if( bLongPress )
-        {
-            // Long press moves to the next oscillator
-            currentOsc = (currentOsc+1) % NUM_CLOCKS;
-
-            // Start entry back at 1Hz unless the clock is disabled
-            // or now on clock 1 and in quadrature
-            // in which case go straight to the control digit
-            if( !bClockEnabled[currentOsc] || ((currentOsc == 1) && (quadrature != 0)) )
-            {
-                freqChangeDigit = CONTROL_CHARACTER;
-            }
-            else
-            {
-                freqChangeDigit = 0;
-                freqChangeAmount = 1;
-            }
-
-            updateDisplay();
-            updateCursor();
-        }
-        else
-        {
-            // Enable or disable the clock if its state has changed
-            if( bNewClockEnabled != bCurrentClockEnabled )
-            {
-                oscClockEnable( currentOsc, bNewClockEnabled );
-                bClockEnabled[currentOsc] = bNewClockEnabled;
-                updateDisplay();
-            }
-
-            // Only set frequency or quadrature if it has changed
-            if( (newOscFreq != currentOscFreq) || (newQuadrature != quadrature) )
-            {
-                // Only accept the new frequency if it is in range
-                if( (newOscFreq >= MIN_FREQUENCY) && (newOscFreq <= MAX_FREQUENCY) )
-                {
-                    oscFreq[currentOsc] = newOscFreq;
-                    quadrature = newQuadrature;
-                    oscSetFrequency( currentOsc, newOscFreq, quadrature );
-
-                    updateDisplay();
-                }
-            }
-        }
+        loop();
     }
 }
 
