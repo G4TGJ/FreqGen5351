@@ -16,5 +16,7 @@ void nvramInit();
 
 uint32_t nvramReadXtalFreq();
 uint32_t nvramReadFreq( uint8_t clock );
+bool nvramReadClockEnable( uint8_t clock );
+bool nvramReadQuadrature();
 
 #endif //NVRAM_H

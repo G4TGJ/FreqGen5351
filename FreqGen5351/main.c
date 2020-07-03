@@ -242,7 +242,7 @@ static void updateCursor()
 }
 
 // When the button is pressed we move to the next digit to change
-static void incFreqChangeDigit()
+static void nextFreqChangeDigit()
 {
     freqChangeDigit++;
     freqChangeAmount *= 10;
@@ -274,6 +274,8 @@ static void loop()
     bool bLongPress;
     bool bCW;
     bool bCCW;
+
+    bool bUpdateDisplay = false;
 
     // Read the rotart control and its switch
     readRotary(&bCW, &bCCW, &bShortPress, &bLongPress);
@@ -361,8 +363,8 @@ static void loop()
     else if( bShortPress )
     {
         // Short press moves to the next digit
-        incFreqChangeDigit();
-        updateCursor();
+        nextFreqChangeDigit();
+        bUpdateDisplay = true;
     }
     if( bLongPress )
     {
@@ -382,8 +384,7 @@ static void loop()
             freqChangeAmount = 1;
         }
 
-        updateDisplay();
-        updateCursor();
+        bUpdateDisplay = true;
     }
     else
     {
@@ -392,7 +393,7 @@ static void loop()
         {
             oscClockEnable( currentClock, bNewClockEnabled );
             bClockEnabled[currentClock] = bNewClockEnabled;
-            updateDisplay();
+            bUpdateDisplay = true;
         }
 
         // Only set frequency or quadrature if it has changed
@@ -405,9 +406,15 @@ static void loop()
                 quadrature = newQuadrature;
                 oscSetFrequency( currentClock, newOscFreq, quadrature );
 
-                updateDisplay();
+                bUpdateDisplay = true;
             }
         }
+    }
+
+    if( bUpdateDisplay )
+    {
+        updateDisplay();
+        updateCursor();
     }
 }
 
@@ -439,11 +446,15 @@ int main(void)
     // Load the crystal frequency from NVRAM
     oscSetXtalFrequency( nvramReadXtalFreq() );
 
-    // Read the frequencies from NVRAM and enable the outputs
+    // Get the quadrature setting from NVRAM
+    quadrature = nvramReadQuadrature();
+
+    // Read the frequencies and enable states from NVRAM and
+    // set the clocks accordingly
     for( i = 0 ; i < NUM_CLOCKS ; i++ )
     {
         clockFreq[i] = nvramReadFreq( i );
-        bClockEnabled[i] = false;
+        bClockEnabled[i] = nvramReadClockEnable( i );
         oscSetFrequency( i, clockFreq[i], quadrature );
         oscClockEnable( i, bClockEnabled[i] );
     }

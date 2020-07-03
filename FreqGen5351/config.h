@@ -45,19 +45,22 @@ typedef uint8_t bool;
 #define DEFAULT_XTAL_FREQ	25000000UL
 #define SI_XTAL_LOAD_CAP SI_XTAL_LOAD_10PF
 
+// The number of clocks on the chip
+#define NUM_CLOCKS 3
+
 // The minimum and maximum crystal frequencies in the setting menu
 // Have to allow for adjusting above or below actual valid crystal range
 #define MIN_XTAL_FREQUENCY 24000000UL
 #define MAX_XTAL_FREQUENCY 28000000UL
 
 // Default frequencies if fail to read from NVRAM
-#define DEFAULT_FREQ_0    500000UL
-#define DEFAULT_FREQ_1   3560000UL
-#define DEFAULT_FREQ_2 199999999UL
+#define DEFAULT_FREQ_0   7030000UL
+#define DEFAULT_FREQ_1  10116000UL
+#define DEFAULT_FREQ_2  14060000UL
 
 // Min and max frequencies we can generate
-#define MIN_FREQUENCY    500UL
-#define MAX_FREQUENCY 199999999UL
+#define MIN_FREQUENCY      5000UL
+#define MAX_FREQUENCY 225000000UL
 
 // Dimensions of the LCD screen
 #define LCD_WIDTH 16

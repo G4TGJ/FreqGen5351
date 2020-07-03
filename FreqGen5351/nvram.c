@@ -23,19 +23,25 @@
 #define MAGIC 0x20474654
 
 // Data format:
-// TFG xxxxxxxx ddddddddd eeeeeeeee fffffffff 
+// TFG xxxxxxxx a ddddddddd b eeeeeeeee c fffffffff 
 //
 // Always starts with TFG
 
 // xxxxxxxx is the xtal frequency
+// a is 0 or 1 for clock 0 off or on
 // ddddddddd is the clock 0 frequency
+// b is 0, 1, + or - for clock 1 off, on, quadrature +90 or quadrature -90
 // eeeeeeeee is the clock 1 frequency
+// c is 0 or 1 for clock 2 off or on
 // fffffffff is the clock 2 frequency
 //
 // For example:
-// TFG 25000123 007030000 014000000 199999999
+// TFG 25000123 1 007030000 + 014000000 0 199999999
 //
 // Note that there must be the correct number of digits with leading zeroes
+//
+// If quadrature is set for clock 1 then it uses clock 0's frequency
+// If quadrature is set for clock 0 or 2 then these are simply set on
 //
 // If the format is incorrect or the values are outside
 // the min and max limits defined in config.h then the default values
@@ -47,15 +53,27 @@ static struct __attribute__ ((packed))
     uint32_t magic;         // Magic number to check data is valid
     char    xtal_freq[8];   // Xtal frequency
     char    space1;         // Also expect this to be a space
-    char    freq0[9];       // Clock 0 frequency
+    char    clock0Enable;   // Whether to enable clock 0
     char    space2;         // Also expect this to be a space
-    char    freq1[9];       // Clock 1 frequency
+    char    freq0[9];       // Clock 0 frequency
     char    space3;         // Also expect this to be a space
+    char    clock1Enable;   // Whether to enable clock 0
+    char    space4;         // Also expect this to be a space
+    char    freq1[9];       // Clock 1 frequency
+    char    space5;         // Also expect this to be a space
+    char    clock2Enable;   // Whether to enable clock 0
+    char    space6;         // Also expect this to be a space
     char    freq2[9];       // Clock 2 frequency
 } nvram_cache;
 
-// Validated xtal and clock frequencies
-static uint32_t xtalFreq, freq0, freq1, freq2;
+// Validated xtal and clock frequencies and enable states
+static uint32_t xtalFreq, freq[NUM_CLOCKS];
+
+// Validated clock enable states
+static bool bClockEnable[NUM_CLOCKS];
+
+// Validated quadrature state
+static int8_t quadrature;
 
 // Convert n characters into a number
 static uint32_t convertNum( char *num, uint8_t n )
@@ -82,6 +100,40 @@ static uint32_t convertNum( char *num, uint8_t n )
     return result;
 }
 
+// Interpret the clock enable character 0, 1, + or -
+static bool convertClockEnable( char c, bool *pbEnable, int8_t *pQuadrature )
+{
+    bool bValid = true;
+    switch( c )
+    {
+        case '0':
+            *pbEnable = false;
+            *pQuadrature = 0;
+            break;
+
+        case '1':
+            *pbEnable = true;
+            *pQuadrature = 0;
+            break;
+
+        case '+':
+            *pbEnable = true;
+            *pQuadrature = +1;
+            break;
+
+        case '-':
+            *pbEnable = true;
+            *pQuadrature = -1;
+            break;
+
+        default:
+            bValid = false;
+            break;
+    }
+
+    return bValid;
+}
+
 // Initialise the NVRAM - read it in and check valid.
 // Must be called before any operations
 void nvramInit()
@@ -98,7 +150,10 @@ void nvramInit()
     if( (nvram_cache.magic == MAGIC) &&
         (nvram_cache.space1 == ' ') &&
         (nvram_cache.space2 == ' ') &&
-        (nvram_cache.space3 == ' ') )
+        (nvram_cache.space3 == ' ') &&
+        (nvram_cache.space4 == ' ') &&
+        (nvram_cache.space5 == ' ') &&
+        (nvram_cache.space6 == ' ') )
     {
         bValid = true;
 
@@ -110,22 +165,38 @@ void nvramInit()
         }
 
         // Get the clock 0 frequency and check it is within range
-        freq0 = convertNum( nvram_cache.freq0, 9 );
-        if( (freq0 < MIN_FREQUENCY) || (freq0 > MAX_FREQUENCY) )
+        freq[0] = convertNum( nvram_cache.freq0, 9 );
+        if( (freq[0] < MIN_FREQUENCY) || (freq[0] > MAX_FREQUENCY) )
         {
             bValid = false;
         }
 
         // Get the clock 1 frequency and check it is within range
-        freq1 = convertNum( nvram_cache.freq1, 9 );
-        if( (freq1 < MIN_FREQUENCY) || (freq1 > MAX_FREQUENCY) )
+        freq[1] = convertNum( nvram_cache.freq1, 9 );
+        if( (freq[1] < MIN_FREQUENCY) || (freq[1] > MAX_FREQUENCY) )
         {
             bValid = false;
         }
 
         // Get the clock 2 frequency and check it is within range
-        freq2 = convertNum( nvram_cache.freq2, 9 );
-        if( (freq2 < MIN_FREQUENCY) || (freq2 > MAX_FREQUENCY) )
+        freq[2] = convertNum( nvram_cache.freq2, 9 );
+        if( (freq[2] < MIN_FREQUENCY) || (freq[2] > MAX_FREQUENCY) )
+        {
+            bValid = false;
+        }
+
+        // Get the clock enable states
+        // Read the quadrature state for clock 1
+        int8_t dummy;
+        if( !convertClockEnable( nvram_cache.clock0Enable, &bClockEnable[0], &dummy ) )
+        {
+            bValid = false;
+        }
+        if( !convertClockEnable( nvram_cache.clock1Enable, &bClockEnable[1], &quadrature ) )
+        {
+            bValid = false;
+        }
+        if( !convertClockEnable( nvram_cache.clock2Enable, &bClockEnable[2], &dummy ) )
         {
             bValid = false;
         }
@@ -135,9 +206,13 @@ void nvramInit()
     if( !bValid )
     {
         xtalFreq = DEFAULT_XTAL_FREQ;
-        freq0 = DEFAULT_FREQ_0;
-        freq1 = DEFAULT_FREQ_1;
-        freq2 = DEFAULT_FREQ_2;
+        freq[0] = DEFAULT_FREQ_0;
+        freq[1] = DEFAULT_FREQ_1;
+        freq[2] = DEFAULT_FREQ_2;
+        bClockEnable[0] = false;
+        bClockEnable[1] = false;
+        bClockEnable[2] = false;
+        quadrature = 0;
     }
 }
 
@@ -150,21 +225,29 @@ uint32_t nvramReadXtalFreq()
 
 uint32_t nvramReadFreq( uint8_t clock )
 {
-    switch( clock )
+    if( clock < NUM_CLOCKS )
     {
-        case 0:
-            return freq0;
-            break;
-
-        case 1:
-            return freq1;
-            break;
-
-        case 2:
-            return freq2;
-            break;
-
-        default:
-            return 0;
+        return freq[clock];
     }
+    else
+    {
+        return 0;
+    }
+}
+
+bool nvramReadClockEnable( uint8_t clock )
+{
+    if( clock < NUM_CLOCKS )
+    {
+        return bClockEnable[clock];
+    }
+    else
+    {
+        return false;
+    }
+}
+
+bool nvramReadQuadrature()
+{
+    return quadrature;
 }
