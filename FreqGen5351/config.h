@@ -43,7 +43,7 @@ typedef uint8_t bool;
 
 // The si5351a default crystal frequency and load capacitance
 #define DEFAULT_XTAL_FREQ	25000000UL
-#define SI_XTAL_LOAD_CAP SI_XTAL_LOAD_10PF
+#define SI_XTAL_LOAD_CAP SI_XTAL_LOAD_8PF
 
 // The number of clocks on the chip
 #define NUM_CLOCKS 3
