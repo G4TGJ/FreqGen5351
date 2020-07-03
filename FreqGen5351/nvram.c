@@ -5,7 +5,7 @@
  * is stored in the EEPROM.
  *
  * Created: 07/08/2019
- * Morse keyer version: 10/04/2020
+ *
  * Author : Richard Tomlinson G4TGJ
  */ 
  
@@ -17,6 +17,7 @@
 #include "config.h"
 #include "eeprom.h"
 #include "nvram.h"
+#include "stringfun.h"
 
 // Magic number used to help verify the data is correct
 // ASCII "TFG " in little endian format
@@ -47,8 +48,7 @@
 // the min and max limits defined in config.h then the default values
 // from config.h are used.
 
-// Cached version of the NVRAM - read from the EEPROM at boot time
-static struct __attribute__ ((packed)) 
+struct __attribute__ ((packed)) nvramFormat
 {
     uint32_t magic;         // Magic number to check data is valid
     char    xtal_freq[8];   // Xtal frequency
@@ -64,7 +64,13 @@ static struct __attribute__ ((packed))
     char    clock2Enable;   // Whether to enable clock 0
     char    space6;         // Also expect this to be a space
     char    freq2[9];       // Clock 2 frequency
-} nvram_cache;
+};
+
+// Cached version of the NVRAM - read from the EEPROM at boot time
+static struct nvramFormat nvramCache;
+
+// Modified version of the NVRAM
+static struct nvramFormat modifiedNvram;
 
 // Validated xtal and clock frequencies and enable states
 static uint32_t xtalFreq, freq[NUM_CLOCKS];
@@ -75,30 +81,8 @@ static bool bClockEnable[NUM_CLOCKS];
 // Validated quadrature state
 static int8_t quadrature;
 
-// Convert n characters into a number
-static uint32_t convertNum( char *num, uint8_t n )
-{
-    uint8_t i;
-    uint32_t result = 0;
-    
-    for( i = 0 ; i < n ; i++ )
-    {
-        // First check the characters is a decimal digit
-        if( isdigit(num[i]) )
-        {
-            // Convert from ASCII to decimal and shift into the running total
-            result = (num[i]-'0') + (result * 10);
-        }
-        else
-        {
-            // Not a digit so return 0
-            result = 0;
-            break;
-        }
-    }
-
-    return result;
-}
+// Won't update the EEPROM until initialised
+static bool bUpdatesEnabled;
 
 // Interpret the clock enable character 0, 1, + or -
 static bool convertClockEnable( char c, bool *pbEnable, int8_t *pQuadrature )
@@ -141,45 +125,46 @@ void nvramInit()
     bool bValid = false;
 
     // Read from the EEPROM into the NVRAM cache
-    for( int i = 0 ; i < sizeof( nvram_cache ) ; i++ )
+    // Also read into the modified version - any changes get written back
+    for( int i = 0 ; i < sizeof( nvramCache ) ; i++ )
     {
-        ((uint8_t *) &nvram_cache)[i] = eepromRead(i);
+        ((uint8_t *) &modifiedNvram)[i] = ((uint8_t *) &nvramCache)[i] = eepromRead(i);
     }
     
     // Check the magic numbers and spaces are correct
-    if( (nvram_cache.magic == MAGIC) &&
-        (nvram_cache.space1 == ' ') &&
-        (nvram_cache.space2 == ' ') &&
-        (nvram_cache.space3 == ' ') &&
-        (nvram_cache.space4 == ' ') &&
-        (nvram_cache.space5 == ' ') &&
-        (nvram_cache.space6 == ' ') )
+    if( (nvramCache.magic == MAGIC) &&
+        (nvramCache.space1 == ' ') &&
+        (nvramCache.space2 == ' ') &&
+        (nvramCache.space3 == ' ') &&
+        (nvramCache.space4 == ' ') &&
+        (nvramCache.space5 == ' ') &&
+        (nvramCache.space6 == ' ') )
     {
         bValid = true;
 
         // Get the xtal frequency and check it is within range
-        xtalFreq = convertNum( nvram_cache.xtal_freq, 8 );
+        xtalFreq = convertToUint32( nvramCache.xtal_freq, 8 );
         if( (xtalFreq < MIN_XTAL_FREQUENCY) || (xtalFreq > MAX_XTAL_FREQUENCY) )
         {
             bValid = false;
         }
 
         // Get the clock 0 frequency and check it is within range
-        freq[0] = convertNum( nvram_cache.freq0, 9 );
+        freq[0] = convertToUint32( nvramCache.freq0, 9 );
         if( (freq[0] < MIN_FREQUENCY) || (freq[0] > MAX_FREQUENCY) )
         {
             bValid = false;
         }
 
         // Get the clock 1 frequency and check it is within range
-        freq[1] = convertNum( nvram_cache.freq1, 9 );
+        freq[1] = convertToUint32( nvramCache.freq1, 9 );
         if( (freq[1] < MIN_FREQUENCY) || (freq[1] > MAX_FREQUENCY) )
         {
             bValid = false;
         }
 
         // Get the clock 2 frequency and check it is within range
-        freq[2] = convertNum( nvram_cache.freq2, 9 );
+        freq[2] = convertToUint32( nvramCache.freq2, 9 );
         if( (freq[2] < MIN_FREQUENCY) || (freq[2] > MAX_FREQUENCY) )
         {
             bValid = false;
@@ -188,15 +173,15 @@ void nvramInit()
         // Get the clock enable states
         // Read the quadrature state for clock 1
         int8_t dummy;
-        if( !convertClockEnable( nvram_cache.clock0Enable, &bClockEnable[0], &dummy ) )
+        if( !convertClockEnable( nvramCache.clock0Enable, &bClockEnable[0], &dummy ) )
         {
             bValid = false;
         }
-        if( !convertClockEnable( nvram_cache.clock1Enable, &bClockEnable[1], &quadrature ) )
+        if( !convertClockEnable( nvramCache.clock1Enable, &bClockEnable[1], &quadrature ) )
         {
             bValid = false;
         }
-        if( !convertClockEnable( nvram_cache.clock2Enable, &bClockEnable[2], &dummy ) )
+        if( !convertClockEnable( nvramCache.clock2Enable, &bClockEnable[2], &dummy ) )
         {
             bValid = false;
         }
@@ -205,14 +190,44 @@ void nvramInit()
     // If any of it wasn't valid then set the defaults
     if( !bValid )
     {
-        xtalFreq = DEFAULT_XTAL_FREQ;
-        freq[0] = DEFAULT_FREQ_0;
-        freq[1] = DEFAULT_FREQ_1;
-        freq[2] = DEFAULT_FREQ_2;
-        bClockEnable[0] = false;
-        bClockEnable[1] = false;
-        bClockEnable[2] = false;
-        quadrature = 0;
+        nvramWriteXtalFreq( DEFAULT_XTAL_FREQ );
+        nvramWriteFreq( 0, DEFAULT_FREQ_0 );
+        nvramWriteFreq( 1, DEFAULT_FREQ_1 );
+        nvramWriteFreq( 2, DEFAULT_FREQ_2 );
+        nvramWriteClockEnable( 0, false );
+        nvramWriteClockEnable( 1, false );
+        nvramWriteClockEnable( 2, false );
+        nvramWriteQuadrature( 0 );
+
+        // Also complete the modified copy correctly
+        modifiedNvram.magic = MAGIC;
+        modifiedNvram.space1 = ' ';
+        modifiedNvram.space2 = ' ';
+        modifiedNvram.space3 = ' ';
+        modifiedNvram.space4 = ' ';
+        modifiedNvram.space5 = ' ';
+        modifiedNvram.space6 = ' ';
+    }
+    bUpdatesEnabled = true;
+}
+
+uint32_t nvramCount;
+
+// Write back any changed bytes to the EEPROM
+static void nvramUpdate()
+{
+    // Don't write until we have enabled updates
+    if( bUpdatesEnabled )
+    {
+        for( int i = 0 ; i < sizeof( nvramCache ) ; i++ )
+        {
+            uint8_t newByte = ((uint8_t *) &modifiedNvram)[i];
+            if( newByte != ((uint8_t *) &nvramCache)[i] )
+            {
+                eepromWrite(i, newByte);
+                nvramCount++;
+            }
+        }
     }
 }
 
@@ -221,6 +236,13 @@ void nvramInit()
 uint32_t nvramReadXtalFreq()
 {
     return xtalFreq;
+}
+
+void nvramWriteXtalFreq( uint32_t freq )
+{
+    xtalFreq = freq;
+    convertFromUint32( modifiedNvram.xtal_freq, 8, freq, false );
+    nvramUpdate();
 }
 
 uint32_t nvramReadFreq( uint8_t clock )
@@ -235,6 +257,16 @@ uint32_t nvramReadFreq( uint8_t clock )
     }
 }
 
+void nvramWriteFreq( uint8_t clock, uint32_t frequency )
+{
+    if( clock < NUM_CLOCKS )
+    {
+        freq[clock] = frequency;
+        convertFromUint32( modifiedNvram.freq0 + 12*clock, 9, frequency, false );
+    }
+    nvramUpdate();
+}
+
 bool nvramReadClockEnable( uint8_t clock )
 {
     if( clock < NUM_CLOCKS )
@@ -247,7 +279,60 @@ bool nvramReadClockEnable( uint8_t clock )
     }
 }
 
+void nvramWriteClockEnable( uint8_t clock, bool bEnable )
+{
+    switch( clock )
+    {
+        case 0:
+            bClockEnable[0] = bEnable;
+            modifiedNvram.clock0Enable = bEnable ? '1' : '0';
+            break;
+
+        case 1:
+            bClockEnable[1] = bEnable;
+            if( bEnable )
+            {
+                switch( quadrature )
+                {
+                    case -1:
+                        modifiedNvram.clock1Enable = '-';
+                        break;
+
+                    default:
+                    case 0:
+                        modifiedNvram.clock1Enable = '1';
+                        break;
+
+                    case +1:
+                        modifiedNvram.clock1Enable = '+';
+                        break;
+                }
+            }
+            else
+            {
+                modifiedNvram.clock1Enable = '0';
+            }
+            break;
+
+        case 2:
+            bClockEnable[2] = bEnable;
+            modifiedNvram.clock2Enable = bEnable ? '1' : '0';
+            break;
+
+        // Ignore invalid clocks
+        default:
+            return;
+    }
+    nvramUpdate();
+}
+
 bool nvramReadQuadrature()
 {
     return quadrature;
+}
+
+void nvramWriteQuadrature( int8_t quad )
+{
+    quadrature = quad;
+    nvramUpdate();
 }

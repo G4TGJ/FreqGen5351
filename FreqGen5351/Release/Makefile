@@ -47,7 +47,8 @@ C_SRCS +=  \
 ../../../TARL/USI_TWI_Master.c \
 ../io.c \
 ../main.c \
-../nvram.c
+../nvram.c \
+../stringfun.c
 
 
 PREPROCESSING_SRCS += 
@@ -67,7 +68,8 @@ si5351a.o \
 USI_TWI_Master.o \
 io.o \
 main.o \
-nvram.o
+nvram.o \
+stringfun.o
 
 OBJS_AS_ARGS +=  \
 display.o \
@@ -80,7 +82,8 @@ si5351a.o \
 USI_TWI_Master.o \
 io.o \
 main.o \
-nvram.o
+nvram.o \
+stringfun.o
 
 C_DEPS +=  \
 display.d \
@@ -93,7 +96,8 @@ si5351a.d \
 USI_TWI_Master.d \
 io.d \
 main.d \
-nvram.d
+nvram.d \
+stringfun.d
 
 C_DEPS_AS_ARGS +=  \
 display.d \
@@ -106,7 +110,8 @@ si5351a.d \
 USI_TWI_Master.d \
 io.d \
 main.d \
-nvram.d
+nvram.d \
+stringfun.d
 
 OUTPUT_FILE_PATH +=FreqGen5351.elf
 
@@ -193,6 +198,13 @@ LINKER_SCRIPT_DEP+=
 	
 
 ./nvram.o: .././nvram.c
+	@echo Building file: $<
+	@echo Invoking: AVR/GNU C Compiler : 5.4.0
+	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-gcc.exe$(QUOTE)  -x c -funsigned-char -funsigned-bitfields -DNDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.172\include" -I"../../../TARL" -I".."  -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -mmcu=attiny85 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.172\gcc\dev\attiny85" -c -std=gnu99 -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
+	@echo Finished building: $<
+	
+
+./stringfun.o: .././stringfun.c
 	@echo Building file: $<
 	@echo Invoking: AVR/GNU C Compiler : 5.4.0
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-gcc.exe$(QUOTE)  -x c -funsigned-char -funsigned-bitfields -DNDEBUG  -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.172\include" -I"../../../TARL" -I".."  -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -mmcu=attiny85 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.172\gcc\dev\attiny85" -c -std=gnu99 -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 

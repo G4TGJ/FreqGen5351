@@ -24,3 +24,5 @@ main.c
 
 nvram.c
 
+stringfun.c
+
