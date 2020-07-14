@@ -423,7 +423,7 @@ int main(void)
     uint8_t i;
 
     // Set up the timer
-    setup_millis();
+    millisInit();
 
     // Configure the inputs and outputs
     ioConfigure();
@@ -432,7 +432,7 @@ int main(void)
     nvramInit();
 
     // Set up the display with a brief welcome message
-    displayConfigure();
+    displayInit();
     displayText( 0, "Si5351A Freq Gen", true );
     delay(1000);
 
