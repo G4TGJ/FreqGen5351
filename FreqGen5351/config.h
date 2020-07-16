@@ -74,6 +74,7 @@ typedef uint8_t bool;
 // Address of the LCD display
 #define LCD_I2C_ADDRESS 0x27
 
+// Time for debouncing a switch (ms)
 #define DEBOUNCE_TIME   100
 
 // Time for a key press to be a long press (ms)
