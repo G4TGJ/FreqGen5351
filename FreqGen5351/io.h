@@ -8,25 +8,10 @@
 #ifndef IO_H
 #define IO_H
 
-// Configure all IO ports
-void ioConfigure();
+// Initialise all IO ports
+void ioInit();
 
 // Read the rotary switch
 void ioReadRotary( bool *pbA, bool *pbB, bool *pbSw );
-
-// Read the morse dot and dash paddles
-bool ioReadDotPaddle();
-bool ioReadDashPaddle();
-
-// Read the morse speed switch
-bool ioReadMorseSpeedSwitch();
-
-// Disable/enable the pull up on the speed switch
-void ioDisableMorseSpeedSwitchPullUp();
-void ioEnableMorseSpeedSwitchPullUp();
-
-// Set the morse output high or low
-void ioWriteMorseOutputHigh();
-void ioWriteMorseOutputLow();
 
 #endif //IO_H

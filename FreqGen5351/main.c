@@ -425,8 +425,8 @@ int main(void)
     // Set up the timer
     millisInit();
 
-    // Configure the inputs and outputs
-    ioConfigure();
+    // Initialise the inputs and outputs
+    ioInit();
 
     // Initialise the NVRAM
     nvramInit();
