@@ -418,9 +418,25 @@ static void loop()
     }
 }
 
+// Initialise the system clock to 8MHz
+// This saves having to set the CLKDIV8 fuse bit
+// This should be called at the beginning while interrupts
+// are disabled.
+static void clockInit()
+{
+    // Enable access to the clock prescaler select bits
+    CLKPR = 1<<CLKPCE;
+
+    // Set the prescaler to 1 to give 8Mhz clock
+    CLKPR = 0;
+}
+
 int main(void)
 {
     uint8_t i;
+
+    // Set the system clock to 8MHz
+    clockInit();
 
     // Set up the timer
     millisInit();

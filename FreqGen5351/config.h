@@ -22,8 +22,9 @@ typedef uint8_t bool;
 
 // Processor definitions
 // CPU clock speed
-// This should be 1MHz unless you have programmed the CKDIV8 fuse
-#define F_CPU 1000000UL
+// The clock speed is set by software at start up so the CLKDIV8 fuse
+// does not need to be changed.
+#define F_CPU 8000000UL
 
 // I/O definitions
 
