@@ -1,6 +1,6 @@
 FROM alpine
 
-RUN apk update && apk add -U make gcc-avr avr-libc git-core
+RUN apk update && apk add -U make gcc-avr avr-libc git
 
 RUN git clone https://github.com/G4TGJ/TARL.git
 
