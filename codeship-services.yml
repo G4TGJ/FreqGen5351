@@ -1,4 +1,4 @@
 app:
   build:
-    image: FreqGen5351
+    image: freqgen5351
     dockerfile: dockerfile
