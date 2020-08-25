@@ -37,7 +37,8 @@ To build with [Atmel Studio 7](https://www.microchip.com/mplab/avr-support/atmel
 
 To build with Linux you will need to install git, the compiler and library. For Ubuntu:
 
-    sudo apt install gcc-avr avr-libc git-core
+    sudo apt install gcc-avr avr-libc git
+    
     
 Clone this repo plus TARL:
 
@@ -48,3 +49,5 @@ Build:
 
     cd FreqGen5351/FreqGen5351
     ./build.sh
+
+This creates Release/FreqGen5351.hex.
