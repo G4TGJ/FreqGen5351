@@ -9,7 +9,7 @@ so that the clock runs at the correct rate.
 There are many tools available for this including expensive "official" tools and the cheap (and effective) USBasp (which I use). Most of these are Chinese clones but they work
 well. It is also possible to use an Arduino as a programmer.
 
-The usual application for programming is avrdude. This has a GUI frontend available - avrdudess. This is what I use and it is very good. I also have avrdude set up as an
+The usual application for programming is [avrdude](https://www.nongnu.org/avrdude/). This has a GUI frontend available - [avrdudess](https://blog.zakkemble.net/avrdudess-a-gui-for-avrdude/). This is what I use and it is very good. I also have avrdude set up as an
 external tool in Atmel Studio so I can program the flash directly from there.
 
 ### Fuses
