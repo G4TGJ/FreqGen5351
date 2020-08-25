@@ -22,9 +22,16 @@ The LFUSE must be set. Setting HFUSE is optional. See the table for the correct 
 | HFUSE  | 0xD7  | Clear EESAVE so that EEPROM is not erased when programming flash |
 | EFUSE  | 0xFF  | None |
 
+## Building the sofware
+
+To compile from source you will need this repo and [TARL](https://github.com/G4TGJ/TARL).
+
 ### Windows Build
 
-To build with Atmel Studio 7 open FreqGen5351.atsln.
+You can download the source as zip files or clone the repo using git. To do this install [Git for Windows](https://git-scm.com/download/win) or 
+[GitHub Desktop](https://desktop.github.com/).
+
+To build with [Atmel Studio 7](https://www.microchip.com/mplab/avr-support/atmel-studio-7) open FreqGen5351.atsln.
 
 ### Linux Build
 
