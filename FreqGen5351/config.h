@@ -53,10 +53,16 @@ typedef uint8_t bool;
 #define MIN_XTAL_FREQUENCY 24000000UL
 #define MAX_XTAL_FREQUENCY 28000000UL
 
-// Default frequencies if fail to read from NVRAM
-#define DEFAULT_FREQ_0   7030000UL
-#define DEFAULT_FREQ_1  10116000UL
-#define DEFAULT_FREQ_2  14060000UL
+// Default frequencies, enable states and quadrature mode if fail to read from NVRAM
+#define DEFAULT_FREQ_0  25000000UL
+#define DEFAULT_FREQ_1   4996000UL
+#define DEFAULT_FREQ_2   9996000UL
+
+#define DEFAULT_FREQ_0_ENABLE   true
+#define DEFAULT_FREQ_1_ENABLE   true
+#define DEFAULT_FREQ_2_ENABLE   true
+
+#define DEFAULT_QUADRATURE   0
 
 // Min and max frequencies we can generate
 #define MIN_FREQUENCY      5000UL

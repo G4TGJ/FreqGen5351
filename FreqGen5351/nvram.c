@@ -209,10 +209,10 @@ void nvramInit()
         freq[0] = DEFAULT_FREQ_0;
         freq[1] = DEFAULT_FREQ_1;
         freq[2] = DEFAULT_FREQ_2;
-        bClockEnable[0] = false;
-        bClockEnable[1] = false;
-        bClockEnable[2] = false;
-        quadrature = 0;
+        bClockEnable[0] = DEFAULT_FREQ_0_ENABLE;
+        bClockEnable[1] = DEFAULT_FREQ_0_ENABLE;
+        bClockEnable[2] = DEFAULT_FREQ_0_ENABLE;
+        quadrature = DEFAULT_QUADRATURE;
     }
 }
 
