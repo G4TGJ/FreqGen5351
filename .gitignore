@@ -10,3 +10,6 @@
 
 #User Specific Files
 *.atsuo
+
+#Allow certain files
+!FreqGen5351/calibrate.eep
