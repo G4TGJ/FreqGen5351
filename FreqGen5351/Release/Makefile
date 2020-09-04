@@ -39,12 +39,12 @@ SUBDIRS :=
 C_SRCS +=  \
 ../../../TARL/display.c \
 ../../../TARL/eeprom.c \
+../../../TARL/i2c.c \
 ../../../TARL/lcd.c \
 ../../../TARL/lcd_i2c.c \
 ../../../TARL/millis.c \
 ../../../TARL/rotary.c \
 ../../../TARL/si5351a.c \
-../../../TARL/USI_TWI_Master.c \
 ../io.c \
 ../main.c \
 ../nvram.c
@@ -59,12 +59,12 @@ ASM_SRCS +=
 OBJS +=  \
 display.o \
 eeprom.o \
+i2c.o \
 lcd.o \
 lcd_i2c.o \
 millis.o \
 rotary.o \
 si5351a.o \
-USI_TWI_Master.o \
 io.o \
 main.o \
 nvram.o
@@ -72,12 +72,12 @@ nvram.o
 OBJS_AS_ARGS +=  \
 display.o \
 eeprom.o \
+i2c.o \
 lcd.o \
 lcd_i2c.o \
 millis.o \
 rotary.o \
 si5351a.o \
-USI_TWI_Master.o \
 io.o \
 main.o \
 nvram.o
@@ -85,12 +85,12 @@ nvram.o
 C_DEPS +=  \
 display.d \
 eeprom.d \
+i2c.d \
 lcd.d \
 lcd_i2c.d \
 millis.d \
 rotary.d \
 si5351a.d \
-USI_TWI_Master.d \
 io.d \
 main.d \
 nvram.d
@@ -98,12 +98,12 @@ nvram.d
 C_DEPS_AS_ARGS +=  \
 display.d \
 eeprom.d \
+i2c.d \
 lcd.d \
 lcd_i2c.d \
 millis.d \
 rotary.d \
 si5351a.d \
-USI_TWI_Master.d \
 io.d \
 main.d \
 nvram.d
@@ -130,6 +130,13 @@ LINKER_SCRIPT_DEP+=
 	
 
 ./eeprom.o: ../../../TARL/eeprom.c
+	@echo Building file: $<
+	@echo Invoking: AVR/GNU C Compiler : 5.4.0
+	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-gcc.exe$(QUOTE)  -x c -funsigned-char -funsigned-bitfields -DNDEBUG  -I"../../../TARL" -I".." -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.229\include"  -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -mmcu=attiny85 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.229\gcc\dev\attiny85" -c -std=gnu99 -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
+	@echo Finished building: $<
+	
+
+./i2c.o: ../../../TARL/i2c.c
 	@echo Building file: $<
 	@echo Invoking: AVR/GNU C Compiler : 5.4.0
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-gcc.exe$(QUOTE)  -x c -funsigned-char -funsigned-bitfields -DNDEBUG  -I"../../../TARL" -I".." -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.229\include"  -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -mmcu=attiny85 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.229\gcc\dev\attiny85" -c -std=gnu99 -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
@@ -165,13 +172,6 @@ LINKER_SCRIPT_DEP+=
 	
 
 ./si5351a.o: ../../../TARL/si5351a.c
-	@echo Building file: $<
-	@echo Invoking: AVR/GNU C Compiler : 5.4.0
-	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-gcc.exe$(QUOTE)  -x c -funsigned-char -funsigned-bitfields -DNDEBUG  -I"../../../TARL" -I".." -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.229\include"  -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -mmcu=attiny85 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.229\gcc\dev\attiny85" -c -std=gnu99 -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
-	@echo Finished building: $<
-	
-
-./USI_TWI_Master.o: ../../../TARL/USI_TWI_Master.c
 	@echo Building file: $<
 	@echo Invoking: AVR/GNU C Compiler : 5.4.0
 	$(QUOTE)C:\Program Files (x86)\Atmel\Studio\7.0\toolchain\avr8\avr8-gnu-toolchain\bin\avr-gcc.exe$(QUOTE)  -x c -funsigned-char -funsigned-bitfields -DNDEBUG  -I"../../../TARL" -I".." -I"C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.229\include"  -Os -ffunction-sections -fdata-sections -fpack-struct -fshort-enums -Wall -mmcu=attiny85 -B "C:\Program Files (x86)\Atmel\Studio\7.0\Packs\atmel\ATtiny_DFP\1.3.229\gcc\dev\attiny85" -c -std=gnu99 -MD -MP -MF "$(@:%.o=%.d)" -MT"$(@:%.o=%.d)" -MT"$(@:%.o=%.o)"   -o "$@" "$<" 
