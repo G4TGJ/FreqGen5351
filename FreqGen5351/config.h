@@ -20,6 +20,55 @@ typedef uint8_t bool;
 
 #define ULONG_MAX 0xFFFFFFFF
 
+#ifdef VPORTC
+
+// ATtiny 1-series
+
+// Processor definitions
+// CPU clock speed
+#define F_CPU 3333333UL
+
+// I/O definitions
+
+#define LED_DIR_REG     VPORTC.DIR
+#define LED_OUT_REG     VPORTC.OUT
+#define LED_PIN         0
+#define LED_TOGGLE_REG  PORTC.OUTTGL
+
+#define SW_DIR_REG      VPORTC.DIR
+#define SW_IN_REG       VPORTC.IN
+#define SW_PIN          5
+#define SW_PIN_CTRL     PORTC.PIN5CTRL
+
+#define ROTARY_ENCODER_A_DIR_REG    VPORTC.DIR
+#define ROTARY_ENCODER_A_IN_REG     VPORTC.IN
+#define ROTARY_ENCODER_A_PIN        2
+#define ROTARY_ENCODER_A_PIN_CTRL   PORTC.PIN2CTRL
+
+#define ROTARY_ENCODER_B_DIR_REG    VPORTC.DIR
+#define ROTARY_ENCODER_B_IN_REG     VPORTC.IN
+#define ROTARY_ENCODER_B_PIN        3
+#define ROTARY_ENCODER_B_PIN_CTRL   PORTC.PIN3CTRL
+
+#define ROTARY_ENCODER_SW_DIR_REG   VPORTC.DIR
+#define ROTARY_ENCODER_SW_IN_REG    VPORTC.IN
+#define ROTARY_ENCODER_SW_PIN       1
+#define ROTARY_ENCODER_SW_PIN_CTRL  PORTC.PIN1CTRL
+
+// Oscillator chip definitions
+// Have a different version of the Si5351A and a different crystal
+// on the ATtiny817 board
+// I2C address
+#define SI5351A_I2C_ADDRESS 0x62
+
+// The si5351a default crystal frequency and load capacitance
+#define DEFAULT_XTAL_FREQ	27000000UL
+#define SI_XTAL_LOAD_CAP SI_XTAL_LOAD_8PF
+
+#else
+
+// ATtiny85
+
 // Processor definitions
 // CPU clock speed
 // The CKDIV8 fuse must be unprogrammed for 8MHz.
@@ -45,6 +94,9 @@ typedef uint8_t bool;
 #define DEFAULT_XTAL_FREQ	25000000UL
 #define SI_XTAL_LOAD_CAP SI_XTAL_LOAD_8PF
 
+#endif
+
+// Oscillator chip definitions
 // The number of clocks on the chip
 #define NUM_CLOCKS 3
 
@@ -85,5 +137,7 @@ typedef uint8_t bool;
 
 // Time for a key press to be a long press (ms)
 #define LONG_PRESS_TIME 250
+
+#define I2C_CLOCK_RATE 100000
 
 #endif /* CONFIG_H_ */

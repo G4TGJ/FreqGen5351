@@ -6,6 +6,8 @@
 
 ..\..\TARL\eeprom.c
 
+..\..\TARL\i2c.c
+
 ..\..\TARL\lcd.c
 
 ..\..\TARL\lcd_i2c.c
@@ -15,8 +17,6 @@
 ..\..\TARL\rotary.c
 
 ..\..\TARL\si5351a.c
-
-..\..\TARL\USI_TWI_Master.c
 
 io.c
 
