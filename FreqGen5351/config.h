@@ -133,10 +133,10 @@ typedef uint8_t bool;
 #define LCD_I2C_ADDRESS 0x27
 
 // Time for debouncing a switch (ms)
-#define DEBOUNCE_TIME   100
+#define ROTARY_BUTTON_DEBOUNCE_TIME   100
 
 // Time for a key press to be a long press (ms)
-#define LONG_PRESS_TIME 250
+#define ROTARY_LONG_PRESS_TIME 250
 
 #define I2C_CLOCK_RATE 100000
 

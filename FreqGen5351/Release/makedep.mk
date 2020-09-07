@@ -14,6 +14,8 @@
 
 ..\..\TARL\millis.c
 
+..\..\TARL\pushbutton.c
+
 ..\..\TARL\rotary.c
 
 ..\..\TARL\si5351a.c
