@@ -20,6 +20,10 @@ typedef uint8_t bool;
 
 #define ULONG_MAX 0xFFFFFFFF
 
+#define VFO_MODE
+
+#define CW_OFFSET 700
+
 #ifdef VPORTC
 
 // ATtiny 1-series
