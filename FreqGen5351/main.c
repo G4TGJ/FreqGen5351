@@ -25,23 +25,16 @@
 // Number of clocks under control
 #define NUM_CLOCKS 3
 
-#ifdef VFO_MODE
-
-static bool bVfoMode = true;
+// Set to true if we are in VFO mode rather than frequency generator mode
+static bool bVfoMode;
 
 // Amount to change the VFO in fast and normal modes
 //#define VFO_CHANGE_FAST     100
 //#define VFO_CHANGE_NORMAL   10
 
 // In fast mode, if the dial is spun the rate speeds up
-#define VFO_SPEED_UP_DIFF   150  // If dial clicks are no more than this ms apart then speed up
-#define VFO_SPEED_UP_FACTOR  10  // Multiply the rate by this
-
-#else
-
-static bool bVfoMode = false;
-
-#endif
+//#define VFO_SPEED_UP_DIFF   150  // If dial clicks are no more than this ms apart then speed up
+//#define VFO_SPEED_UP_FACTOR  10  // Multiply the rate by this
 
 // The clock frequencies
 static uint32_t clockFreq[NUM_CLOCKS];
@@ -194,12 +187,15 @@ static void updateCursor();
 // If bShort is true then only output 4 characters
 // otherwise convert the whole number
 //
+// If bVfo is true then output in vfo format with dots
+// separating M and k.
+//
 // len is the length of the buffer and we won't write beyond it
 //
 // If there are only 4 characters available then
 // can only handle 3 digits plus an M or K
 // (or 4 digits for the lowest frequencies)
-static void convertNumber( char *buf, uint8_t len, uint32_t number, bool bShort )
+static void convertNumber( char *buf, uint8_t len, uint32_t number, bool bShort, bool bVfo )
 {
     uint32_t divider;
     uint8_t pos = 0;
@@ -207,13 +203,15 @@ static void convertNumber( char *buf, uint8_t len, uint32_t number, bool bShort 
     // Set to true once we have started converting digits
     bool bStarted = false;
 
-#ifndef VFO_MODE
-    // Start by writing out leading spaces
-    for( pos = 0 ; pos < (len-9) ; pos++ )
+    // In non-vfo mode fill up the buffer with spaces on the left
+    if( !bVfo )
     {
-        buf[pos] = ' ';
+        // Start by writing out leading spaces
+        for( pos = 0 ; pos < (len-9) ; pos++ )
+        {
+            buf[pos] = ' ';
+        }
     }
-#endif
     
     // Maximum number is 200 000 000
     // We want to convert digits starting at the left
@@ -222,14 +220,13 @@ static void convertNumber( char *buf, uint8_t len, uint32_t number, bool bShort 
         // Get the current digit
         uint8_t digit = number / divider;
 
-#ifdef VFO_MODE
-        if( (pos == 3) || (pos == 7) )
+        // In VFO mode put a dot at the M and k positions
+        if( bVfo && ((pos == 3) || (pos == 7)) )
         {
             buf[pos] = '.';
             pos++;
         }
         else
-#endif
         {
             // If we have started converting or this is a digit
             if( bStarted || digit )
@@ -416,7 +413,7 @@ static void handleRotary( bool bCW, bool bCCW, bool bShortPress, bool bLongPress
     enum eMode newMode = currentMode;
     uint8_t newBand = currentBand;
 
-#ifdef VFO_MODE
+#if 0//def VFO_MODE
     // See how quickly we have rotated the control so that we can speed up
     // the rate in fast mode if the dial is spun
     static uint32_t prevTime;
@@ -558,37 +555,40 @@ static void handleRotary( bool bCW, bool bCCW, bool bShortPress, bool bLongPress
     }
     if( bLongPress )
     {
-#ifdef VFO_MODE
-        // A long press toggles setting mode
-        if( bSettingMode )
+        if( bVfoMode )
         {
-            bSettingMode = false;
-            pCursorTransitions = vfoCursorTransition;
-        }
-        else
-        {
-            bSettingMode = true;
-            pCursorTransitions = vfoCursorSettingTransition;
-        }
+            // A long press toggles setting mode
+            if( bSettingMode )
+            {
+                bSettingMode = false;
+                pCursorTransitions = vfoCursorTransition;
+            }
+            else
+            {
+                bSettingMode = true;
+                pCursorTransitions = vfoCursorSettingTransition;
+            }
 
-        // Always start at the beginning of the new transition list
-        cursorIndex = 0;
-#else
-        // Long press moves to the next clock
-        currentClock = (currentClock+1) % NUM_CLOCKS;
-
-        // Start entry back at 1Hz unless the clock is disabled
-        // or now on clock 1 and in quadrature
-        // in which case go straight to the control digit
-        if( !bClockEnabled[currentClock] || ((currentClock == 1) && (quadrature != 0)) )
-        {
-            cursorIndex = CONTROL_CHARACTER_INDEX;
-        }
-        else
-        {
+            // Always start at the beginning of the new transition list
             cursorIndex = 0;
         }
-#endif
+        else
+        {
+            // Long press moves to the next clock
+            currentClock = (currentClock+1) % NUM_CLOCKS;
+
+            // Start entry back at 1Hz unless the clock is disabled
+            // or now on clock 1 and in quadrature
+            // in which case go straight to the control digit
+            if( !bClockEnabled[currentClock] || ((currentClock == 1) && (quadrature != 0)) )
+            {
+                cursorIndex = CONTROL_CHARACTER_INDEX;
+            }
+            else
+            {
+                cursorIndex = 0;
+            }
+        }
         bUpdateDisplay = true;
     }
     else
@@ -658,7 +658,7 @@ static void updateDisplay()
         displayText( 0, buf, true );
 
         // On the second line display the frequency
-        convertNumber( buf, LCD_WIDTH, clockFreq[0], false );
+        convertNumber( buf, LCD_WIDTH, clockFreq[0], false, true );
         displayText( 1, buf, true );
     }
     else
@@ -685,7 +685,7 @@ static void updateDisplay()
             }
             else
             {
-                convertNumber( &buf[i*(SHORT_WIDTH+1)], SHORT_WIDTH, clockFreq[i], true );
+                convertNumber( &buf[i*(SHORT_WIDTH+1)], SHORT_WIDTH, clockFreq[i], true, false );
             }
             buf[i*(SHORT_WIDTH+1)+SHORT_WIDTH] = ' ';
         }
@@ -722,7 +722,7 @@ static void updateDisplay()
         {
             // Otherwise it's a colon and the frequency
             buf[4] = ':';
-            convertNumber( &buf[7], LCD_WIDTH-7, clockFreq[currentClock], false );
+            convertNumber( &buf[7], LCD_WIDTH-7, clockFreq[currentClock], false, false );
         }
         buf[LCD_WIDTH] = '\0';
 
@@ -768,34 +768,33 @@ int main(void)
     // Initialise the NVRAM
     nvramInit();
 
+    // Set the VFO mode early
+    bVfoMode = nvramReadVfoMode();
+
     // Set up the display with a brief welcome message
     displayInit();
-    displayText( 0, "Si5351A Freq Gen", true );
-    delay(500);
 
     // Initialise the oscillator chip
-    if( !oscInit() )
-    {
-        displayText( 0, "Osc Fail", true );
-        delay(1000);
-    }
+    oscInit();
 
     // Load the crystal frequency from NVRAM
     oscSetXtalFrequency( nvramReadXtalFreq() );
 
-#ifdef VFO_MODE
     // Start in CW mode
     currentMode = MODE_CW;
 
-    pCursorTransitions = vfoCursorTransition;
-
-#else
     // Get the quadrature setting from NVRAM
     quadrature = nvramReadQuadrature();
 
-    pCursorTransitions = freqGenCursorTransition;
-
-#endif
+    // Set the cursor transitions for the mode
+    if( bVfoMode )
+    {
+        pCursorTransitions = vfoCursorTransition;
+    }
+    else
+    {
+        pCursorTransitions = freqGenCursorTransition;
+    }
 
     // Read the frequencies and enable states from NVRAM and
     // set the clocks accordingly
@@ -803,13 +802,13 @@ int main(void)
     {
         clockFreq[i] = nvramReadFreq( i );
         bClockEnabled[i] = nvramReadClockEnable( i );
-#ifdef VFO_MODE
+
         // In VFO mode never have clock 2
-        if( i == 2 )
+        if( bVfoMode && (i == 2) )
         {
             bClockEnabled[i] = false;
         }
-#endif
+
         setFrequency( i, clockFreq[i], quadrature );
         oscClockEnable( i, bClockEnabled[i] );
     }

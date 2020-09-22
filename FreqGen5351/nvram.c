@@ -18,14 +18,21 @@
 #include "eeprom.h"
 #include "nvram.h"
 
-// Magic number used to help verify the data is correct
+// Magic numbers used to help verify the data is correct
+// and determine whether in frequency generator or VFO mode
+
+// Frequency generator mode
 // ASCII "TFG " in little endian format
-#define MAGIC 0x20474654
+#define MAGIC_FG 0x20474654
+
+// VFO mode
+// ASCII "TVF " in little endian format
+#define MAGIC_VFO 0x20465654
 
 // Data format:
 // TFG xxxxxxxx a ddddddddd b eeeeeeeee c fffffffff 
 //
-// Always starts with TFG
+// Always starts with TFG or TVF
 
 // xxxxxxxx is the xtal frequency
 // a is 0 or 1 for clock 0 off or on
@@ -48,7 +55,7 @@
 // from config.h are used.
 
 // Cached version of the NVRAM - read from the EEPROM at boot time
-static struct __attribute__ ((packed)) 
+struct __attribute__ ((packed)) sNvramCache
 {
     uint32_t magic;         // Magic number to check data is valid
     char    xtal_freq[8];   // Xtal frequency
@@ -64,7 +71,7 @@ static struct __attribute__ ((packed))
     char    clock2Enable;   // Whether to enable clock 0
     char    space6;         // Also expect this to be a space
     char    freq2[9];       // Clock 2 frequency
-} nvram_cache;
+};
 
 // Validated xtal and clock frequencies and enable states
 static uint32_t xtalFreq, freq[NUM_CLOCKS];
@@ -74,6 +81,9 @@ static bool bClockEnable[NUM_CLOCKS];
 
 // Validated quadrature state
 static int8_t quadrature;
+
+// Validated VFO mode
+static bool bVfoMode;
 
 // Convert n characters into a number
 static uint32_t convertNum( char *num, uint8_t n )
@@ -138,6 +148,8 @@ static bool convertClockEnable( char c, bool *pbEnable, int8_t *pQuadrature )
 // Must be called before any operations
 void nvramInit()
 {
+    struct sNvramCache nvram_cache;
+
     bool bValid = false;
 
     // Read from the EEPROM into the NVRAM cache
@@ -147,7 +159,7 @@ void nvramInit()
     }
     
     // Check the magic numbers and spaces are correct
-    if( (nvram_cache.magic == MAGIC) &&
+    if( ((nvram_cache.magic == MAGIC_FG) || (nvram_cache.magic == MAGIC_VFO)) &&
         (nvram_cache.space1 == ' ') &&
         (nvram_cache.space2 == ' ') &&
         (nvram_cache.space3 == ' ') &&
@@ -156,6 +168,12 @@ void nvramInit()
         (nvram_cache.space6 == ' ') )
     {
         bValid = true;
+
+        // The magic number determines if we are in VFO mode
+        if( nvram_cache.magic == MAGIC_VFO )
+        {
+            bVfoMode = true;
+        }
 
         // Get the xtal frequency and check it is within range
         xtalFreq = convertNum( nvram_cache.xtal_freq, 8 );
@@ -213,6 +231,7 @@ void nvramInit()
         bClockEnable[1] = DEFAULT_FREQ_0_ENABLE;
         bClockEnable[2] = DEFAULT_FREQ_0_ENABLE;
         quadrature = DEFAULT_QUADRATURE;
+        bVfoMode = false;
     }
 }
 
@@ -250,4 +269,9 @@ bool nvramReadClockEnable( uint8_t clock )
 bool nvramReadQuadrature()
 {
     return quadrature;
+}
+
+bool nvramReadVfoMode()
+{
+    return bVfoMode;
 }
