@@ -33,7 +33,10 @@
 // TFG xxxxxxxx a ddddddddd b eeeeeeeee c fffffffff 
 //
 // Always starts with TFG or TVF
-
+//
+// TFG sets frequency generator mode
+// TVF sets VFO mode
+//
 // xxxxxxxx is the xtal frequency
 // a is 0 or 1 for clock 0 off or on
 // ddddddddd is the clock 0 frequency
@@ -45,10 +48,14 @@
 // For example:
 // TFG 25000123 1 007030000 + 014000000 0 199999999
 //
+// In VFO mode a is C, R, U or L for CW, CWReverse, USB or LSB
+//
 // Note that there must be the correct number of digits with leading zeroes
 //
 // If quadrature is set for clock 1 then it uses clock 0's frequency
 // If quadrature is set for clock 0 or 2 then these are simply set on
+//
+// In VFO mode clock 1 and clock 2 values are ignored, but must be present and valid
 //
 // If the format is incorrect or the values are outside
 // the min and max limits defined in config.h then the default values
@@ -85,6 +92,9 @@ static int8_t quadrature;
 // Validated VFO mode
 static bool bVfoMode;
 
+// Validated RX mode i.e. CW, CWR, USB or LSB
+static enum eMode RXMode;
+
 // Convert n characters into a number
 static uint32_t convertNum( char *num, uint8_t n )
 {
@@ -110,8 +120,9 @@ static uint32_t convertNum( char *num, uint8_t n )
     return result;
 }
 
-// Interpret the clock enable character 0, 1, + or -
-static bool convertClockEnable( char c, bool *pbEnable, int8_t *pQuadrature )
+// Interpret the clock enable character 0, 1, + or - in clock generator mode
+// C, R, U or L in VFO mode
+static bool convertClockEnable( char c, bool *pbEnable, int8_t *pQuadrature, uint8_t *pRXMode )
 {
     bool bValid = true;
     switch( c )
@@ -119,21 +130,49 @@ static bool convertClockEnable( char c, bool *pbEnable, int8_t *pQuadrature )
         case '0':
             *pbEnable = false;
             *pQuadrature = 0;
+            *pRXMode = MODE_CW;
             break;
 
         case '1':
             *pbEnable = true;
             *pQuadrature = 0;
+            *pRXMode = MODE_CW;
             break;
 
         case '+':
             *pbEnable = true;
             *pQuadrature = +1;
+            *pRXMode = MODE_CW;
             break;
 
         case '-':
             *pbEnable = true;
             *pQuadrature = -1;
+            *pRXMode = MODE_CW;
+            break;
+
+        case 'C':
+            *pbEnable = true;
+            *pQuadrature = 0;
+            *pRXMode = MODE_CW;
+            break;
+
+        case 'R':
+            *pbEnable = true;
+            *pQuadrature = 0;
+            *pRXMode = MODE_CWR;
+            break;
+
+        case 'U':
+            *pbEnable = true;
+            *pQuadrature = 0;
+            *pRXMode = MODE_USB;
+            break;
+
+        case 'L':
+            *pbEnable = true;
+            *pQuadrature = 0;
+            *pRXMode = MODE_LSB;
             break;
 
         default:
@@ -205,16 +244,17 @@ void nvramInit()
 
         // Get the clock enable states
         // Read the quadrature state for clock 1
-        int8_t dummy;
-        if( !convertClockEnable( nvram_cache.clock0Enable, &bClockEnable[0], &dummy ) )
+        int8_t iDummy;
+        enum eMode uDummy;
+        if( !convertClockEnable( nvram_cache.clock0Enable, &bClockEnable[0], &iDummy, &RXMode ) )
         {
             bValid = false;
         }
-        if( !convertClockEnable( nvram_cache.clock1Enable, &bClockEnable[1], &quadrature ) )
+        if( !convertClockEnable( nvram_cache.clock1Enable, &bClockEnable[1], &quadrature, &uDummy ) )
         {
             bValid = false;
         }
-        if( !convertClockEnable( nvram_cache.clock2Enable, &bClockEnable[2], &dummy ) )
+        if( !convertClockEnable( nvram_cache.clock2Enable, &bClockEnable[2], &iDummy, &uDummy ) )
         {
             bValid = false;
         }
@@ -232,6 +272,7 @@ void nvramInit()
         bClockEnable[2] = DEFAULT_FREQ_0_ENABLE;
         quadrature = DEFAULT_QUADRATURE;
         bVfoMode = false;
+        RXMode = MODE_CW;
     }
 }
 
@@ -256,7 +297,13 @@ uint32_t nvramReadFreq( uint8_t clock )
 
 bool nvramReadClockEnable( uint8_t clock )
 {
-    if( clock < NUM_CLOCKS )
+    // In VFO mode clocks 0 and 1 are always enabled and
+    // clock 2 is always disabled
+    if( bVfoMode )
+    {
+        return ((clock == 0) || (clock == 1)) ? true : false;
+    }
+    else if( clock < NUM_CLOCKS )
     {
         return bClockEnable[clock];
     }
@@ -274,4 +321,9 @@ bool nvramReadQuadrature()
 bool nvramReadVfoMode()
 {
     return bVfoMode;
+}
+
+enum eMode nvramReadRXMode()
+{
+    return RXMode;
 }
