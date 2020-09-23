@@ -126,6 +126,9 @@ typedef uint8_t bool;
 #define LCD_WIDTH 16
 #define LCD_HEIGHT 2
 
+// Don't need scrolling so save some memory
+#define DISPLAY_DISABLE_SCROLLING
+
 // Space for each frequency on the top line
 // Must be able to get all 3 within the LCD_WIDTH
 // (plus spaces in between)

@@ -42,10 +42,6 @@ static uint32_t clockFreq[NUM_CLOCKS];
 // Clock currently being updated
 static uint8_t currentClock = 0;
 
-// True if in fast VFO mode - frequency change speeds up if control
-// rotated quickly
-static bool bFastVFOMode;
-
 // True if in setting mode - can change band, sideband etc
 static bool bSettingMode;
 
@@ -62,7 +58,7 @@ static int8_t quadrature = 0;
 static bool bUpdateDisplay;
 
 // Band frequencies
-#define NUM_BANDS 11    // Not including out-of-band
+#define NUM_BANDS 9     // Not including out-of-band
 #define BAND_NAME_LEN 7 // Does not include terminating null
 #define OUT_OF_BAND 0
 
@@ -78,8 +74,6 @@ band[NUM_BANDS + 1] PROGMEM =
     { "OOB    ",           0,        0,        0 },
     { "160m   ",     1810000,  1999999,  1836000 },
     { "80m    ",     3500000,  3799999,  3560000 },
-    { "60m UK ",     5258500,  5263999,  5262000 },
-    { "60m EU ",     5354000,  5357999,  5355000 },
     { "40m    ",     7000000,  7199999,  7030000 },
     { "30m    ",    10100000, 10150000, 10116000 },
     { "20m    ",    14000000, 14349999, 14060000 },
@@ -91,17 +85,6 @@ band[NUM_BANDS + 1] PROGMEM =
 
 // Current band
 static uint8_t currentBand = OUT_OF_BAND;
-
-// Reception modes
-// CW and CWR are USB and LSB, respectively, but
-// with an offset
-enum eMode
-{
-    MODE_USB,
-    MODE_LSB,
-    MODE_CW,
-    MODE_CWR
-};
 
 // Text for the modes
 #define NUM_MODES 4
@@ -324,12 +307,6 @@ static uint8_t getBand( uint32_t frequency )
     return bandIndex;
 }
 
-// Get a PROGMEM pointer to the current band text
-static const char *getBandText()
-{
-    return band[currentBand].bandName;
-}
-
 // Set the frequency.
 static void setFrequency( uint8_t clock, uint32_t f, int8_t q )
 {
@@ -370,10 +347,10 @@ static void setFrequency( uint8_t clock, uint32_t f, int8_t q )
             oscSetFrequency( 0, freq, quad );
             oscSetFrequency( 1, freq, quad );
 
-            // Set the band if it has changed
-            if( (freq < pgm_read_dword(&band[currentBand].minFreq)) || (freq > pgm_read_dword(&band[currentBand].maxFreq)) )
+            // Set the band if it has changed - use the frequency before the offset is applied
+            if( (f < pgm_read_dword(&band[currentBand].minFreq)) || (f > pgm_read_dword(&band[currentBand].maxFreq)) )
             {
-                currentBand = getBand( freq );
+                currentBand = getBand( f );
             }
         }
     }
@@ -408,25 +385,8 @@ static void handleRotary( bool bCW, bool bCCW, bool bShortPress, bool bLongPress
 
     uint32_t change = pgm_read_dword(&pCursorTransitions[cursorIndex].freqChange);
 
-    uint8_t speedUpFactor = 1;
-
     enum eMode newMode = currentMode;
     uint8_t newBand = currentBand;
-
-#if 0//def VFO_MODE
-    // See how quickly we have rotated the control so that we can speed up
-    // the rate in fast mode if the dial is spun
-    static uint32_t prevTime;
-    uint32_t currentTime = millis();
-    uint32_t diffTime = currentTime - prevTime;
-    prevTime = currentTime;
-
-    // In fast VFO mode we speed up the change if the dial is spun
-    if( bFastVFOMode && (diffTime < VFO_SPEED_UP_DIFF) )
-    {
-        speedUpFactor = VFO_SPEED_UP_FACTOR;
-    }
-#endif
 
     if( bCW )
     {
@@ -483,7 +443,7 @@ static void handleRotary( bool bCW, bool bCCW, bool bShortPress, bool bLongPress
         }
         else
         {
-            newOscFreq += (change * speedUpFactor);
+            newOscFreq += change;
         }
     }
     else if( bCCW )
@@ -544,7 +504,7 @@ static void handleRotary( bool bCW, bool bCCW, bool bShortPress, bool bLongPress
         }
         else
         {
-            newOscFreq -= (change * speedUpFactor);
+            newOscFreq -= change;
         }
     }
     else if( bShortPress )
@@ -653,7 +613,7 @@ static void updateDisplay()
     {
         // In VFO mode on the top line we display the current band (or OOB if out-of-band)
         // Copy the mode text after the band name
-        strcpy_P( buf, getBandText() );
+        strcpy_P( buf, band[currentBand].bandName );
         strcpy_P( &buf[BAND_NAME_LEN], modeText[currentMode] );
         displayText( 0, buf, true );
 
@@ -771,7 +731,7 @@ int main(void)
     // Set the VFO mode early
     bVfoMode = nvramReadVfoMode();
 
-    // Set up the display with a brief welcome message
+    // Set up the display
     displayInit();
 
     // Initialise the oscillator chip
@@ -780,8 +740,8 @@ int main(void)
     // Load the crystal frequency from NVRAM
     oscSetXtalFrequency( nvramReadXtalFreq() );
 
-    // Start in CW mode
-    currentMode = MODE_CW;
+    // Get the reception mode (only used in VFO mode)
+    currentMode = nvramReadRXMode();
 
     // Get the quadrature setting from NVRAM
     quadrature = nvramReadQuadrature();
@@ -802,12 +762,6 @@ int main(void)
     {
         clockFreq[i] = nvramReadFreq( i );
         bClockEnabled[i] = nvramReadClockEnable( i );
-
-        // In VFO mode never have clock 2
-        if( bVfoMode && (i == 2) )
-        {
-            bClockEnabled[i] = false;
-        }
 
         setFrequency( i, clockFreq[i], quadrature );
         oscClockEnable( i, bClockEnabled[i] );
