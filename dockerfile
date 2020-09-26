@@ -1,6 +1,4 @@
-FROM alpine
-
-RUN apk update && apk add -U make gcc-avr avr-libc git
+FROM opthomasprime/avr-gcc
 
 RUN git clone https://github.com/G4TGJ/TARL.git
 
