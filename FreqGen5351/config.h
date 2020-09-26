@@ -20,6 +20,8 @@ typedef uint8_t bool;
 
 #define ULONG_MAX 0xFFFFFFFF
 
+#define CW_OFFSET 700
+
 #ifdef VPORTC
 
 // ATtiny 1-series
@@ -123,6 +125,9 @@ typedef uint8_t bool;
 // Dimensions of the LCD screen
 #define LCD_WIDTH 16
 #define LCD_HEIGHT 2
+
+// Don't need scrolling so save some memory
+#define DISPLAY_DISABLE_SCROLLING
 
 // Space for each frequency on the top line
 // Must be able to get all 3 within the LCD_WIDTH
