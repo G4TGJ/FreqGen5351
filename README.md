@@ -1,15 +1,36 @@
 # FreqGen5351
 Si5351a based frequency generator
 
-Update: The latest version adds VFO mode (selectable from the EEPROM configuration) and fixes a bug where quadrature mode was not always turned off.
+Update: The latest version of the source adds VFO mode (selectable from the EEPROM configuration) and fixes a bug where quadrature mode was not always turned off. There is no
+pre-built hex file for this yet (watch this space).
  
 You can flash a pre-built hex file (look under the releases tab) or you can build it yourself (see below). As well as programming the flash you must also set the fuses. This is 
 so that the clock runs at the correct rate.
 
+## Frequency Generator Mode
+
+In frequency generator mode you can independently set the frequency of each clock. A short press of the rotary control changes the digit that each click changes. If you press
+it enough times the cursor moves to the colon - here you can turn the clock on or off, or, for CLK1, set quadrature mode. This sets CLK1 to the same frequency as CLK0 but 
+with a 90 degree phase shift. A + means CLK1 leads CLK0 by 90 degrees and a - means CLK0 leads CLK1.
+
+A long press changes the clock you are currently adjusting.
+
 ### VFO Mode
 
 If VFO mode is selected in the EEPROM then the user interface is much more suitable for use in a receiver as it allows you to easily tune around a band rather than set each
-output to a precise frequency.
+output to a precise frequency. CLK0 and CLK1 output the same frequency but with a 90 degree phase shift. CLK2 is off.
+
+Initially clicks of the rotary control adjust the frequency by 10Hz. A short press of the control moves to 100Hz and then 1kHz increments. Press it again and it goes back to
+10Hz.
+
+A longer press on the control moves the cursor to 100kHz. A short press moves it to 1MHz, then the band and then the mode. Press it again and it goes back to 100kHz. A long
+press moves it back to the 10Hz, 100Hz, 1kHz sequence. The bands are from 160m to 10m but not including 60m. Unfortunately there isn't enough space in the flash to support more
+bands but you can still easily move to any frequency even though it is out-of-band.
+
+The VFO modes are USB, LSB, CW and CWR. In USB and CW modes, CLK1 leads CLK0 by 90 degrees. In LSB and CWR modes, CLK0 leads CLK1 by 90 degrees. The difference between
+USB/LSB and CW/CWR is that the CW modes have a 700Hz shift. So, suppose you are listening to a carrier on 7030kHz. In CW or CWR modes you would tune to 7030000 and you would 
+hear a 700Hz tone. In USB, you would need to tune to 7029300 and in LSB you would need to tune to 7030700 to get the same 700Hz tone. The offset is defined in config.h 
+(CW_OFFSET).
 
 ### Programming flash, EEPROM and fuses
 
