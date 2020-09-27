@@ -1,8 +1,7 @@
 # FreqGen5351
 Si5351a based frequency generator
 
-Update: The latest version of the source adds VFO mode (selectable from the EEPROM configuration) and fixes a bug where quadrature mode was not always turned off. There is no
-pre-built hex file for this yet (watch this space).
+Version 2.0 adds VFO mode (selectable from the EEPROM configuration) and fixes a bug where quadrature mode was not always turned off.
  
 You can flash a pre-built hex file (look under the releases tab) or you can build it yourself (see below). As well as programming the flash you must also set the fuses. This is 
 so that the clock runs at the correct rate.
