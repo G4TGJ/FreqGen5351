@@ -111,6 +111,9 @@ To build with [Atmel Studio 7](https://www.microchip.com/mplab/avr-support/atmel
 
 ### Linux Build
 
+The code only just fits within the 8K flash; with Atmel Studio there is about 40 bytes spare. More recent compilers produce larger code that does not fit
+within the flash so on Linux you may need to find an older version of the compiler. So the following instructions are only a guide.
+
 To build with Linux you will need to install git, the compiler and library. For Ubuntu:
 
     sudo apt install gcc-avr avr-libc git
