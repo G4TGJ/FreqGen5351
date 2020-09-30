@@ -39,6 +39,18 @@ well. It is also possible to use an Arduino as a programmer.
 The usual application for programming is [avrdude](https://www.nongnu.org/avrdude/). This has a GUI frontend available - [avrdudess](https://blog.zakkemble.net/avrdudess-a-gui-for-avrdude/). This is what I use and it is very good. I also have avrdude set up as an
 external tool in Atmel Studio so I can program the flash directly from there.
 
+#### Example avrdude commands
+
+The exact command you need will depend on which programmer you have and your operating system. For example, on Linux you may need to prefix these commands with ``sudo``.
+
+Programming flash:
+
+    avrdude -c usbasp -p t85 -U flash:w:FreqGen5351-v2.0.hex:r
+
+Programming eeprom:
+
+    avrdude -c usbasp -p t85 -U eeprom:w:calibrate.eep:r
+
 ### Fuses
 
 The LFUSE must be set. Setting HFUSE is optional. See the table for the correct values.
