@@ -41,16 +41,22 @@ external tool in Atmel Studio so I can program the flash directly from there.
 
 #### Example avrdude commands
 
-The exact command you need will depend on which programmer you have and your operating system. For example, on Linux you may need to prefix these commands with ``sudo``.
+The exact command you need will depend on which programmer you have and your operating system. For example, on Linux you may need to prefix these commands with ``sudo``. Notice the subtle differences between the commands e.g. the flash file is in Intel hex format but the EEPROM is in raw binary.
 
 Programming flash:
 
-    avrdude -c usbasp -p t85 -U flash:w:FreqGen5351-v2.0.hex:r
+    avrdude -c usbasp -p t85 -U flash:w:FreqGen5351-v2.0.hex:i
 
 Programming eeprom:
 
     avrdude -c usbasp -p t85 -U eeprom:w:calibrate.eep:r
 
+Programming fuses:
+
+    avrdude -c usbasp -p t85 -U lfuse:w:0xe2:m
+    avrdude -c usbasp -p t85 -U hfuse:w:0xd7:m
+    avrdude -c usbasp -p t85 -U efuse:w:0xff:m
+    
 ### Fuses
 
 The LFUSE must be set. Setting HFUSE is optional. See the table for the correct values.
