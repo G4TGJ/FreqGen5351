@@ -1,5 +1,5 @@
 # FreqGen5351
-Si5351a based frequency generator
+Si5351a based frequency generator published in RadCom November 2020. The PCB files are in the PCB directory.
 
 Version 2.0 adds VFO mode (selectable from the EEPROM configuration) and fixes a bug where quadrature mode was not always turned off.
  
