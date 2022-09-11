@@ -22,6 +22,10 @@ typedef uint8_t bool;
 
 #define CW_OFFSET 700
 
+// For SSB the offset is half the filter bandwidth so
+// here we assume 3kHz.
+#define SSB_OFFSET 1500
+
 #ifdef VPORTC
 
 // ATtiny 1-series

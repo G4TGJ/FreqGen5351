@@ -229,15 +229,17 @@ void nvramInit()
         }
 
         // Get the clock 1 frequency and check it is within range
+        // We ignore this frequency in VFO mode
         freq[1] = convertNum( nvram_cache.freq1, 9 );
-        if( (freq[1] < MIN_FREQUENCY) || (freq[1] > MAX_FREQUENCY) )
+        if( !bVfoMode && ((freq[1] < MIN_FREQUENCY) || (freq[1] > MAX_FREQUENCY)) )
         {
             bValid = false;
         }
 
         // Get the clock 2 frequency and check it is within range
+        // In VFO mode it is allowed to be zero (signifies quadrature mode)
         freq[2] = convertNum( nvram_cache.freq2, 9 );
-        if( (freq[2] < MIN_FREQUENCY) || (freq[2] > MAX_FREQUENCY) )
+        if( !(bVfoMode && freq[2] == 0) && ((freq[2] < MIN_FREQUENCY) || (freq[2] > MAX_FREQUENCY)) )
         {
             bValid = false;
         }
@@ -297,11 +299,20 @@ uint32_t nvramReadFreq( uint8_t clock )
 
 bool nvramReadClockEnable( uint8_t clock )
 {
-    // In VFO mode clocks 0 and 1 are always enabled and
-    // clock 2 is always disabled
     if( bVfoMode )
     {
-        return ((clock == 0) || (clock == 1)) ? true : false;
+		if( freq[2] == 0 )
+		{
+			// In quadrature VFO mode clocks 0 and 1 are always enabled and
+			// clock 2 is always disabled
+			return ((clock == 0) || (clock == 1)) ? true : false;
+		}
+		else
+		{
+			// In superhet VFO mode clocks 0 and 2 are always enabled and
+			// clock 1 is always disabled
+			return ((clock == 0) || (clock == 2)) ? true : false;
+		}
     }
     else if( clock < NUM_CLOCKS )
     {
