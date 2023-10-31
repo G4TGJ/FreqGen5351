@@ -7,7 +7,7 @@ You can flash a pre-built hex file (look under the releases tab) or you can buil
 so that the clock runs at the correct rate.
 
 The VFO mode in the latest source (but not in a release) adds support for a superhet receiver as well as the existing quadrature direct conversion VFO. To fit this
-within the ATtiny85's 8K of flash I have removed the band display and selection. It is very easy to change frequency so this is not much of a harship. There is
+within the ATtiny85's 8K of flash I have removed the band display and selection. It is very easy to change frequency so this is not much of a hardship. There is
 another change that means it isn't quite backwards compatible with the previous code. Clock 2 must be set to zero to work in the existing quadrature way. Otherwise
 this is set to the centre frequency of the superhet's filter. Clock 0 is the high-side VFO frequency and clock 2 is the BFO frequency. Clock 1 is not used.
 The exact frequencies are set depending on whether CW, CW reverse, USB or LSB is set. I use this for developing circuitry rather than within a finished receiver
